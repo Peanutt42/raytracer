@@ -1,5 +1,13 @@
 use std::ops::{Add, Sub, Mul, Div, Neg};
 
+pub fn radians(degrees: f64) -> f64 {
+	degrees * std::f64::consts::PI / 180.0
+}
+
+pub fn random(min: f64, max: f64) -> f64 {
+	min + (max - min) * rand::random::<f64>()
+}
+
 
 #[derive(Debug, Clone, Copy)]
 pub struct Vec3 {
@@ -23,6 +31,14 @@ impl Vec3 {
 
 	pub fn dot(&self, other: &Self) -> f64 {
 		self.x * other.x + self.y * other.y + self.z * other.z
+	}
+
+	pub fn cross(&self, other: &Self) -> Self {
+		Vec3 {
+			x: self.y * other.z - self.z * other.y,
+			y: self.z * other.x - self.x * other.z,
+			z: self.x * other.y - self.y * other.x
+		}
 	}
 
 	pub fn length_squared(&self) -> f64 {
@@ -71,6 +87,11 @@ impl Vec3 {
 
 	pub fn random_unit_vector() -> Self {
 		let p = Self::random(-1.0, 1.0);
+		p.normalize()
+	}
+
+	pub fn random_in_unit_disk() -> Self {
+		let p = Vec3::new(random(-1.0, 1.0), random(-1.0, 1.0), 0.0);
 		p.normalize()
 	}
 }
@@ -152,9 +173,9 @@ impl Neg for Vec3 {
 
 	fn neg(self) -> Self {
 		Vec3 {
-			x: self.x,
-			y: self.y,
-			z: self.z
+			x: -self.x,
+			y: -self.y,
+			z: -self.z
 		}
 	}
 }

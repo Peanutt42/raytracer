@@ -1,4 +1,5 @@
 use crate::math::{Vec3, Ray};
+use std::rc::Rc;
 
 pub trait Material {
 	fn scatter(&self, ray_in: &Ray, hit: &RayHit, attenuation_out: &mut Vec3, scattered_out: &mut Ray) -> bool;
@@ -63,7 +64,7 @@ impl Dielectric {
 		// Use schlick's approximation for reflectance
 		let mut r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
 		r0 = r0*r0;
-		r0 + (1.0 - r0) * (1.0 - cosine).powf(5.0)
+		r0 + (1.0 - r0) * f64::powi(1.0 - cosine, 5)
 	}
 }
 
@@ -78,8 +79,8 @@ impl Material for Dielectric {
 		}
 
 		let unit_dir = ray_in.dir.normalize();
-		let cos_theta = (-unit_dir).dot(&hit.normal).min(1.0);
-		let sin_theta = (1.0 - cos_theta*cos_theta).sqrt();
+		let cos_theta = f64::min((-unit_dir).dot(&hit.normal), 1.0);
+		let sin_theta = f64::sqrt(1.0 - (cos_theta * cos_theta));
 
 		let cannot_refract = refration_ratio * sin_theta > 1.0;
 		let direction: Vec3;
@@ -96,14 +97,14 @@ impl Material for Dielectric {
 
 
 #[derive(Clone)]
-pub struct Sphere<'a> {
+pub struct Sphere {
 	pub center: Vec3,
 	pub radius: f64,
-	pub material: &'a dyn Material,
+	pub material: Rc<dyn Material>,
 }
 
-impl<'a> Sphere<'a> {
-	pub fn new(center: Vec3, radius: f64, material: &'a dyn Material) -> Self {
+impl Sphere {
+	pub fn new(center: Vec3, radius: f64, material: Rc<dyn Material>) -> Self {
 		Sphere {
 			center: center,
 			radius: radius,
@@ -152,7 +153,7 @@ impl<'a> Sphere<'a> {
 pub struct RayHit<'a> {
 	pub point: Vec3,
 	pub normal: Vec3,
-	pub object: &'a Sphere<'a>,
+	pub object: &'a Sphere,
 	pub front_face: bool,
 }
 
@@ -167,11 +168,11 @@ impl<'a> RayHit<'a> {
 	}
 }
 
-pub struct Scene<'a> {
-	pub spheres: Vec<Sphere<'a>>
+pub struct Scene {
+	pub spheres: Vec<Sphere>
 }
 
-impl<'a> Scene<'a> {
+impl Scene {
 	pub fn new() -> Self {
 		Scene{ spheres: Vec::new() }
 	}

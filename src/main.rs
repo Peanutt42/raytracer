@@ -1,8 +1,10 @@
+use std::rc::Rc;
+
 use indicatif::{ProgressStyle, ProgressIterator};
 use image::{RgbImage, Rgb};
 
 mod math;
-use math::{Vec3, Ray};
+use math::*;
 
 mod scene;
 use scene::*;
@@ -40,26 +42,60 @@ fn ray_color(ray: &Ray, scene: &Scene, depth: usize) -> Vec3 {
 }
 
 fn main() {
-	let width = 500;
-	let height = 100;
-	let samples_per_pixel = 1000;
-	let max_depth = 100;
+	let width = 2560;
+	let height = 1440;//(width * (16 / 9)) as usize;
+	let samples_per_pixel = 500;
+	let max_depth = 50;
 
-	let camera = Camera::new(Vec3::new(0.0, 0.0, 1.0), width, height);
+	let camera = Camera::new(
+		Vec3::new(13.0, 2.0, 3.0), 
+		20.0,
+		&Vec3::new(0.0, 0.0, 0.0), 
+		&Vec3::new(0.0, 1.0, 0.0),
+		10.0, 0.6,
+		width, height);
 	
 	let mut scene = Scene::new();
 
-	let material_ground = Lambertain::new(Vec3::new(1.0, 1.0, 1.0));
-	let material_center = Lambertain::new(Vec3::new(0.1, 0.2, 0.5));
-	let material_left = Dielectric::new(1.5);
-	let material_right = Metal::new(Vec3::new(0.5, 0.3, 0.0), 0.0);
+	let material_ground = Rc::new(Lambertain::new(Vec3::new(0.5, 0.5, 0.5)));
+	scene.spheres.push(Sphere::new(Vec3::new(0.0,-1000.0,0.0), 1000.0, material_ground));
 
-	scene.spheres.push(Sphere::new(Vec3::new(0.0,-100.5,-1.0), 100.0, &material_ground));
-	scene.spheres.push(Sphere::new(Vec3::new(0.0,0.0,-1.5), 0.5, &material_center));
-	scene.spheres.push(Sphere::new(Vec3::new(-1.0,0.0,-1.0), 0.5, &material_left));
-	scene.spheres.push(Sphere::new(Vec3::new(-1.0,0.0,-1.0), -0.35, &material_left));
-	scene.spheres.push(Sphere::new(Vec3::new(1.0,0.0,-1.0), 0.5, &material_right));
+	let mut materials: Vec<Rc<dyn Material>> = Vec::new();
 
+	for a in -11..11 {
+		for b in -11..11 {
+			let random_mat = rand::random::<f64>();
+			let center = Vec3::new(a as f64 + 0.9 * rand::random::<f64>(), 0.2, b as f64 + 0.9 * rand::random::<f64>());
+
+			if (center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
+				if random_mat < 0.8 {
+					// diffuse
+					let albedo = Vec3::random(0.0, 1.0) * Vec3::random(0.0, 1.0);
+					let material = Rc::new(Lambertain::new(albedo));
+					scene.spheres.push(Sphere::new(center, 0.2, material.clone()));
+					materials.push(material);
+				} else if random_mat < 0.95 {
+					// metal
+					let albedo = Vec3::random(0.5, 1.0);
+					let fuzz = random(0.0, 0.5);
+					let material = Rc::new(Metal::new(albedo, fuzz));
+					scene.spheres.push(Sphere::new(center, 0.2, material.clone()));
+					materials.push(material);
+				} else {
+					// glass
+					let material = Rc::new(Dielectric::new(1.5));
+					scene.spheres.push(Sphere::new(center, 0.2, material.clone()));
+					materials.push(material);
+				}
+			}
+		}
+	}
+	let mat1 = Rc::new(Dielectric::new(1.5));
+	let mat2 = Rc::new(Lambertain::new(Vec3::new(0.4, 0.2, 0.1)));
+	let mat3 = Rc::new(Metal::new(Vec3::new(0.7, 0.6, 0.5), 0.0));
+	scene.spheres.push(Sphere::new(Vec3::new(0.0, 1.0, 0.0), 1.0, mat1));
+	scene.spheres.push(Sphere::new(Vec3::new(-4.0, 1.0, 0.0), 1.0, mat2));
+	scene.spheres.push(Sphere::new(Vec3::new(4.0, 1.0, 0.0), 1.0, mat3));
 
 	let progress_bar_style = ProgressStyle::with_template("{elapsed} {percent}% {wide_bar:.green/white}").unwrap();
 
@@ -69,7 +105,7 @@ fn main() {
 		for x in 0..width {
 			let mut final_color = Vec3::zero();
 			for _ in 0..samples_per_pixel {
-				let ray = camera.get_ray(x as usize, y as usize);
+				let ray = camera.get_ray(x as f64, y as f64);
 				final_color = final_color + ray_color(&ray, &scene, max_depth);
 			}
 			final_color = final_color * inv_samples_per_pixel as f64;
