@@ -13,6 +13,14 @@ impl Vec3 {
 		Vec3 { x, y, z }
 	}
 
+	pub fn zero() -> Self {
+		Vec3 { x: 0.0, y: 0.0, z: 0.0 }
+	}
+
+	pub fn one() -> Self {
+		Vec3 { x: 1.0, y: 1.0, z: 1.0 }
+	}
+
 	pub fn dot(&self, other: &Self) -> f64 {
 		self.x * other.x + self.y * other.y + self.z * other.z
 	}
@@ -34,6 +42,25 @@ impl Vec3 {
 		}
 	}
 
+	pub fn reflect(&self, normal: &Vec3) -> Self {
+		*self - (*normal * 2.0 * self.dot(&normal))
+	}
+
+	pub fn refract(uv: &Vec3, n: &Vec3, etai_over_etat: f64) -> Vec3 {
+		let cos_theta = (-(*uv)).dot(n).min(1.0);
+		let r_out_perp = etai_over_etat * (*uv + cos_theta*(*n));
+		let r_out_parallel = -((1.0 - r_out_perp.length_squared()).abs().sqrt()) * (*n);
+		r_out_perp + r_out_parallel
+	}
+
+	pub fn near_zero_tolerance(&self, tolerance: f64) -> bool {
+		(self.x.abs() <= tolerance) && (self.y.abs() <= tolerance) && (self.z.abs() <= tolerance)
+	}
+
+	pub fn near_zero(&self) -> bool {
+		self.near_zero_tolerance(0.00000001)
+	}
+
 	pub fn random(min: f64, max: f64) -> Self {
 		Vec3 {
 			x: min + (max-min) * rand::random::<f64>(),
@@ -42,18 +69,20 @@ impl Vec3 {
 		}
 	}
 
-	pub fn random_unit_sphere() -> Self {
+	pub fn random_unit_vector() -> Self {
 		let p = Self::random(-1.0, 1.0);
 		p.normalize()
 	}
+}
 
-	pub fn random_hemisphere(normal: &Vec3) -> Self {
-		let v = Self::random_unit_sphere();
-		if v.dot(&normal) > 0.0 {
-			v
-		}
-		else {
-			-v
+impl Add for Vec3 {
+	type Output = Self;
+
+	fn add(self, other: Self) -> Self {
+		Vec3 {
+			x: self.x + other.x,
+			y: self.y + other.y,
+			z: self.z + other.z,
 		}
 	}
 }
@@ -70,18 +99,6 @@ impl Sub for Vec3 {
 	}
 }
 
-impl Add for Vec3 {
-	type Output = Self;
-
-	fn add(self, other: Self) -> Self {
-		Vec3 {
-			x: self.x + other.x,
-			y: self.y + other.y,
-			z: self.z + other.z,
-		}
-	}
-}
-
 impl Mul<f64> for Vec3 {
 	type Output = Self;
 
@@ -90,6 +107,30 @@ impl Mul<f64> for Vec3 {
 			x: self.x * scalar,
 			y: self.y * scalar,
 			z: self.z * scalar,
+		}
+	}
+}
+
+impl Mul<Vec3> for f64 {
+	type Output = Vec3;
+
+	fn mul(self, v: Vec3) -> Vec3 {
+		Vec3 {
+			x: v.x * self,
+			y: v.y * self,
+			z: v.z * self,
+		}
+	}
+}
+
+impl Mul<Vec3> for Vec3 {
+	type Output = Self;
+
+	fn mul(self, other: Vec3) -> Self {
+		Vec3 {
+			x: self.x * other.x,
+			y: self.y * other.y,
+			z: self.z * other.z,
 		}
 	}
 }

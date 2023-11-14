@@ -5,7 +5,7 @@ mod math;
 use math::{Vec3, Ray};
 
 mod scene;
-use scene::{Sphere, Scene};
+use scene::*;
 
 mod camera;
 use camera::Camera;
@@ -21,29 +21,44 @@ fn linear_to_gamma(linear: f64) -> f64 {
 
 fn ray_color(ray: &Ray, scene: &Scene, depth: usize) -> Vec3 {
 	if depth <= 0 {
-		return Vec3::new(0.0, 0.0, 0.0);
+		return Vec3::zero();
 	}
 	
 	if let Some(hit) = scene.trace(&ray) {
-		let new_dir = hit.normal + Vec3::random_hemisphere(&hit.normal);
-		return ray_color(&Ray::new(hit.point, new_dir), &scene, depth - 1) * 0.5;
+		let mut scattered = Ray::new(Vec3::zero(), Vec3::one());
+		let mut attenuation = Vec3::zero();
+		if hit.object.material.scatter(&ray, &hit, &mut attenuation, &mut scattered) {
+			return attenuation * ray_color(&scattered, scene, depth - 1);
+		}
+		return Vec3::zero();
 	}
+	
+	// sky
 	let unit_dir = ray.dir.normalize();
 	let a = 0.5 * (unit_dir.y + 1.0);
-	Vec3::new(1.0, 1.0, 1.0) * (1.0-a) + Vec3::new(0.5, 0.7, 1.0) * a
+	Vec3::one() * (1.0-a) + Vec3::new(0.5, 0.7, 1.0) * a
 }
 
 fn main() {
-	let width = 200;
-	let height = 200;
-	let samples_per_pixel = 1500;
+	let width = 500;
+	let height = 100;
+	let samples_per_pixel = 1000;
 	let max_depth = 100;
 
-	let camera = Camera::new(Vec3::new(0.0, 0.0, 0.0), width, height);
+	let camera = Camera::new(Vec3::new(0.0, 0.0, 1.0), width, height);
 	
 	let mut scene = Scene::new();
-	scene.spheres.push(Sphere::new(Vec3::new(0.0,0.0,-1.0), 0.5));
-	scene.spheres.push(Sphere::new(Vec3::new(0.0,-100.5,-1.0), 100.0));
+
+	let material_ground = Lambertain::new(Vec3::new(1.0, 1.0, 1.0));
+	let material_center = Lambertain::new(Vec3::new(0.1, 0.2, 0.5));
+	let material_left = Dielectric::new(1.5);
+	let material_right = Metal::new(Vec3::new(0.5, 0.3, 0.0), 0.0);
+
+	scene.spheres.push(Sphere::new(Vec3::new(0.0,-100.5,-1.0), 100.0, &material_ground));
+	scene.spheres.push(Sphere::new(Vec3::new(0.0,0.0,-1.5), 0.5, &material_center));
+	scene.spheres.push(Sphere::new(Vec3::new(-1.0,0.0,-1.0), 0.5, &material_left));
+	scene.spheres.push(Sphere::new(Vec3::new(-1.0,0.0,-1.0), -0.35, &material_left));
+	scene.spheres.push(Sphere::new(Vec3::new(1.0,0.0,-1.0), 0.5, &material_right));
 
 
 	let progress_bar_style = ProgressStyle::with_template("{elapsed} {percent}% {wide_bar:.green/white}").unwrap();
@@ -52,7 +67,7 @@ fn main() {
 	let inv_samples_per_pixel = 1.0 / samples_per_pixel as f64;
 	for y in (0..height).progress_with_style(progress_bar_style).with_finish(indicatif::ProgressFinish::Abandon) {
 		for x in 0..width {
-			let mut final_color = Vec3::new(0.0, 0.0, 0.0);
+			let mut final_color = Vec3::zero();
 			for _ in 0..samples_per_pixel {
 				let ray = camera.get_ray(x as usize, y as usize);
 				final_color = final_color + ray_color(&ray, &scene, max_depth);
