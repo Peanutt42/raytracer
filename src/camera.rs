@@ -51,7 +51,7 @@ impl Camera {
 	}
 
 	fn pixel_sample_square(&self) -> Vec3 {
-		((-0.5 * rand::random::<f64>()) * self.pixel_delta_x) + ((-0.5 * rand::random::<f64>()) * self.pixel_delta_y)
+		(random(-0.5, 0.5) * self.pixel_delta_x) + (random(-0.5, 0.5) * self.pixel_delta_y)
 	}
 
 	fn defocus_disk_sample(&self) -> Vec3 {
