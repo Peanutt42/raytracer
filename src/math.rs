@@ -1,4 +1,4 @@
-use std::ops::{Add, Sub, Mul, Div, Neg};
+use std::ops::{Add, Sub, Mul, Div, Neg, Index, IndexMut};
 
 pub fn radians(degrees: f64) -> f64 {
 	degrees * std::f64::consts::PI / 180.0
@@ -9,7 +9,7 @@ pub fn random(min: f64, max: f64) -> f64 {
 }
 
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Vec3 {
 	pub x: f64,
 	pub y: f64,
@@ -19,6 +19,10 @@ pub struct Vec3 {
 impl Vec3 {
 	pub fn new(x: f64, y: f64, z: f64) -> Self {
 		Vec3 { x, y, z }
+	}
+
+	pub fn uniform(v: f64) -> Self {
+		Vec3 { x: v, y: v, z: v }
 	}
 
 	pub fn zero() -> Self {
@@ -58,6 +62,14 @@ impl Vec3 {
 		}
 	}
 
+	pub fn abs(&self) -> Self {
+		Vec3 {
+			x: self.x.abs(),
+			y: self.y.abs(),
+			z: self.z.abs()
+		}
+	}
+
 	pub fn reflect(&self, normal: &Vec3) -> Self {
 		*self - (*normal * 2.0 * self.dot(&normal))
 	}
@@ -75,6 +87,16 @@ impl Vec3 {
 
 	pub fn near_zero(&self) -> bool {
 		self.near_zero_tolerance(0.00000001)
+	}
+
+	pub fn largest_component(&self) -> usize {
+		if self.x > self.y && self.x > self.z {
+            0 // X-axis
+        } else if self.y > self.z {
+            1 // Y-axis
+        } else {
+            2 // Z-axis
+        }
 	}
 
 	pub fn random(min: f64, max: f64) -> Self {
@@ -156,6 +178,18 @@ impl Mul<Vec3> for Vec3 {
 	}
 }
 
+impl Div<Vec3> for Vec3 {
+	type Output = Self;
+
+	fn div(self, other: Vec3) -> Self {
+		Vec3 {
+			x: self.x / other.x,
+			y: self.y / other.y,
+			z: self.z / other.z,
+		}
+	}
+}
+
 impl Div<f64> for Vec3 {
 	type Output = Self;
 
@@ -168,6 +202,18 @@ impl Div<f64> for Vec3 {
 	}
 }
 
+impl Div<Vec3> for f64 {
+	type Output = Vec3;
+
+	fn div(self, v: Vec3) -> Vec3 {
+		Vec3 {
+			x: self / v.x,
+			y: self / v.y,
+			z: self / v.z,
+		}
+	}
+}
+
 impl Neg for Vec3 {
 	type Output = Self;
 
@@ -176,6 +222,30 @@ impl Neg for Vec3 {
 			x: -self.x,
 			y: -self.y,
 			z: -self.z
+		}
+	}
+}
+
+impl Index<usize> for Vec3 {
+	type Output = f64;
+
+	fn index(&self, index: usize) -> &Self::Output {
+		match index {
+			0 => &self.x,
+			1 => &self.y,
+			2 => &self.z,
+			_ => panic!("can't access Vec3 axis over 2!"),
+		}
+	}
+}
+
+impl IndexMut<usize> for Vec3 {
+	fn index_mut(&mut self, index: usize) -> &mut f64 {
+		match index {
+			0 => &mut self.x,
+			1 => &mut self.y,
+			2 => &mut self.z,
+			_ => panic!("can't access Vec3 axis over 2!"),
 		}
 	}
 }
@@ -197,5 +267,67 @@ impl Ray {
 
 	pub fn at(&self, t: f64) -> Vec3 {
 		self.origin + self.dir * t
+	}
+}
+
+
+
+#[derive(Copy, Clone, PartialEq)]
+pub struct AABB {
+	pub min: Vec3,
+	pub max: Vec3,
+}
+
+impl AABB {
+	pub fn new(min: Vec3, max: Vec3) -> Self {
+		AABB { min, max }
+	}
+
+	pub fn hit(&self, ray: &Ray) -> bool {
+		for a in 0..3 {
+			let inv_d = 1.0 / ray.dir[a];
+			let mut t0 = (self.min[a] - ray.origin[a]) * inv_d;
+			let mut t1 = (self.max[a] - ray.origin[a]) * inv_d;
+			if inv_d < 0.0 {
+				let tmp = t0;
+				t0 = t1;
+				t1 = tmp;
+			}
+			let min = if t0 > 0.001 {t0} else {0.001};
+			let max = if t1 < f64::MAX {t1} else {f64::MAX};
+			if max <= min {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	// returns axis with the largest size (x = 0, y = 1, z = 2)
+	pub fn largest_axis(&self) -> usize {
+		let extent = self.max - self.min;
+		let max_extent = extent.x.max(extent.y).max(extent.z);
+
+		if max_extent == extent.x {
+			0 // x-axis
+		} else if max_extent == extent.y {
+			1 // y-axis
+		} else {
+			2 // z-axis
+		}
+	}
+
+	pub fn surrounding(a: &AABB, b: &AABB) -> Self {
+		Self::new(
+			Vec3::new(
+				f64::min(a.min.x, b.min.x),
+				f64::min(a.min.y, b.min.y),
+				f64::min(a.min.z, b.min.z)
+			),
+			Vec3::new(
+				f64::max(a.max.x, b.max.x),
+				f64::max(a.max.y, b.max.y),
+				f64::max(a.max.z, b.max.z)
+			),
+		)
 	}
 }

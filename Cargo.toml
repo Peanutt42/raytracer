@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-indicatif = "0.17.7"
+indicatif = { version = "0.17.7", features = ["rayon"] }
 num-traits = "0.2"
 rand = "0.8.5"
 image = "0.24.7"
+rayon = "1.8"
+itertools = "0.12.0"

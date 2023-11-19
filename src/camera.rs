@@ -68,6 +68,6 @@ impl Camera {
 		} else {
 			ray_origin = self.defocus_disk_sample();
 		}
-		Ray::new(ray_origin, pixel_sample - ray_origin)
+		Ray::new(ray_origin, (pixel_sample - ray_origin).normalize())
 	}
 }
