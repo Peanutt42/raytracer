@@ -24,20 +24,20 @@ impl Camera {
 		let v = w.cross(&u);
 
 		// Calculate the vectors across the horizontal and down the vertical viewport edges.
-        let viewport_u = u * viewport_width;
-        let viewport_v = (-v) * viewport_height;
+		let viewport_u = u * viewport_width;
+		let viewport_v = (-v) * viewport_height;
 
 		let pixel_delta_x = viewport_u / width as f64;
 		let pixel_delta_y = viewport_v / height as f64;
 
-        // Calculate the location of the upper left pixel.
-        let viewport_upper_left = origin - (w * focus_dist) - viewport_u/2.0 - viewport_v/2.0;
-        let pixel00_loc = viewport_upper_left + (pixel_delta_x + pixel_delta_y) * 0.5;
+		// Calculate the location of the upper left pixel.
+		let viewport_upper_left = origin - (w * focus_dist) - viewport_u/2.0 - viewport_v/2.0;
+		let pixel00_loc = viewport_upper_left + (pixel_delta_x + pixel_delta_y) * 0.5;
 
-        // Calculate the camera defocus disk basis vectors.
-        let defocus_radius = focus_dist * f64::tan(radians(defocus_angle / 2.0));
-        let defocus_disk_x = u * defocus_radius;
-        let defocus_disk_y = v * defocus_radius;
+		// Calculate the camera defocus disk basis vectors.
+		let defocus_radius = focus_dist * f64::tan(radians(defocus_angle / 2.0));
+		let defocus_disk_x = u * defocus_radius;
+		let defocus_disk_y = v * defocus_radius;
 
 		Camera {
 			origin: origin,

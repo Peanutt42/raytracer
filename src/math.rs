@@ -91,12 +91,12 @@ impl Vec3 {
 
 	pub fn largest_component(&self) -> usize {
 		if self.x > self.y && self.x > self.z {
-            0 // X-axis
-        } else if self.y > self.z {
-            1 // Y-axis
-        } else {
-            2 // Z-axis
-        }
+			0 // X-axis
+		} else if self.y > self.z {
+			1 // Y-axis
+		} else {
+			2 // Z-axis
+		}
 	}
 
 	pub fn random(min: f64, max: f64) -> Self {

@@ -1,4 +1,4 @@
-use indicatif::{ProgressStyle, ParallelProgressIterator};
+//use indicatif::{ProgressStyle, ParallelProgressIterator};
 use image::*;
 use minifb::MouseButton;
 use rayon::iter::ParallelIterator;
@@ -16,7 +16,7 @@ fn vec3_to_rgb(v: &Vec3) -> image::Rgb<u8> {
 }
 
 fn rgb_to_u32(r: u32, g: u32, b: u32) -> u32 {
-    (r << 16) | (g << 8) | b
+	(r << 16) | (g << 8) | b
 }
 
 fn linear_to_gamma(linear: f64) -> f64 {
@@ -44,7 +44,7 @@ fn ray_color(ray: &Ray, scene: &Scene, depth: usize) -> Vec3 {
 fn main() {
 	let width = 2560;
 	let height = 1440;//(width * (16 / 9)) as usize;
-	let mut image = Arc::new(Mutex::new(image::RgbImage::new(width, height)));
+	let image = Arc::new(Mutex::new(image::RgbImage::new(width, height)));
 	let image_buffer_clone = Arc::clone(&image);
 
 	let mut window = Window::new("Rust Raytracer",
@@ -55,8 +55,8 @@ fn main() {
 		scale: minifb::Scale::X1,
 		..WindowOptions::default()
 	}).unwrap_or_else(|e| {
-        panic!("Unable to create window: {}", e);
-    });
+		panic!("Unable to create window: {}", e);
+	});
 
 	let render_finished = Arc::new(Mutex::new(false));
 	let render_finished_clone = render_finished.clone();
@@ -72,12 +72,12 @@ fn main() {
 	});
 
 	while window.is_open() && !window.is_key_down(Key::Escape) {
-        // Update the window
+		// Update the window
 		let mut buffer: Vec<u32> = vec![0; width as usize * height as usize];
 		for (i, pixel) in image.lock().unwrap().as_raw().chunks(3).enumerate() {
 			buffer[i] = rgb_to_u32(pixel[0] as u32, pixel[1] as u32, pixel[2] as u32)
 		}
-        window.update_with_buffer(&buffer, width as usize, height as usize).unwrap();
+		window.update_with_buffer(&buffer, width as usize, height as usize).unwrap();
 
 		if window.get_mouse_down(MouseButton::Right) {
 			*render_finished_clone.lock().unwrap() = false;
