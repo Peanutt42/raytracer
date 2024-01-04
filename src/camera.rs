@@ -12,14 +12,14 @@ pub struct Camera {
 }
 
 impl Camera {
-	pub fn new(origin: Vec3, fov: f64, look_at: &Vec3, vup: &Vec3, focus_dist: f64, defocus_angle: f64, width: usize, height: usize) -> Self {
+	pub fn new(origin: Vec3, direction: Vec3, fov: f64, vup: &Vec3, focus_dist: f64, defocus_angle: f64, width: usize, height: usize) -> Self {
 		// viewport
 		let theta = radians(fov);
 		let h = f64::tan(theta / 2.0);
 		let viewport_height = 2.0 * h * focus_dist;
 		let viewport_width = viewport_height * (width as f64 / height as f64);
 
-		let w = (origin - *look_at).normalize();
+		let w = -direction.normalize();
 		let u = vup.cross(&w).normalize();
 		let v = w.cross(&u);
 

@@ -99,6 +99,20 @@ impl Vec3 {
 		}
 	}
 
+	pub fn rotate_x(&mut self, theta: f64) {
+        let new_y = self.y * theta.cos() + self.z * theta.sin();
+        let new_z = -self.y * theta.sin() + self.z * theta.cos();
+        self.y = new_y;
+        self.z = new_z;
+    }
+
+    pub fn rotate_y(&mut self, theta: f64) {
+        let new_x = self.x * theta.cos() + self.z * theta.sin();
+        let new_z = -self.x * theta.sin() + self.z * theta.cos();
+        self.x = new_x;
+        self.z = new_z;
+    }
+
 	pub fn random(min: f64, max: f64) -> Self {
 		Vec3 {
 			x: min + (max-min) * rand::random::<f64>(),
