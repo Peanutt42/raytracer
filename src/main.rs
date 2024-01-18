@@ -183,15 +183,17 @@ fn main() {
 			if window.is_key_down(Key::D) {
 				left += 1.0;
 			}
+			let mut up = 0.0;
 			if window.is_key_down(Key::E) {
-				camera.origin.y += 1.0;
+				up += 1.0;
 			}
 			if window.is_key_down(Key::Q) {
-				camera.origin.y -= 1.0;
+				up -= 1.0;
 			}
 			let mut move_dir = direction * forward + direction.cross(&Vec3::new(0.0, 1.0, 0.0)) * left;
 			move_dir = if move_dir == Vec3::new(0.0, 0.0, 0.0) { Vec3::new(0.0, 0.0, 0.0) } else { move_dir.normalize() };
 			camera.origin = camera.origin + move_dir * delta_time * 5.0;
+			camera.origin.y += up * delta_time * 5.0;
 			camera = Camera::new(
 				camera.origin, 
 				direction, 
