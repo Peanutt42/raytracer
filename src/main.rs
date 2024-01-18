@@ -1,8 +1,7 @@
-//use indicatif::{ProgressStyle, ParallelProgressIterator};
+use rayon::prelude::*;
 use image::*;
 use minifb::MouseButton;
 use minifb::{Key, Window, WindowOptions};
-use itertools::Itertools;
 use rust_tracer::math::*;
 use rust_tracer::scene::*;
 use rust_tracer::camera::Camera;
@@ -39,8 +38,8 @@ fn ray_color(ray: &Ray, scene: &Scene, depth: usize) -> Vec3 {
 }
 
 fn main() {
-	let width = 400;//2560;
-	let height = 300;//1440;//(width * (16 / 9)) as usize;
+	let width = 800;//2560;
+	let height = 600;//1440;//(width * (16 / 9)) as usize;
 	let max_depth = 50;
 
 	let mut accum_image: Vec<Vec3> = Vec::new();
@@ -74,7 +73,8 @@ fn main() {
 	let material_ground = Material::Lambertain{ albedo: Vec3::new(0.5, 0.5, 0.5) };
 	scene.add_cube(Vec3::new(0.0,-1000.0,0.0), Vec3::uniform(1000.0), material_ground);
 
-	/*for a in -11..11 {
+	/*
+	for a in -11..11 {
 		for b in -11..11 {
 			let random_mat = rand::random::<f64>();
 			let center = Vec3::new(a as f64 + 0.9 * rand::random::<f64>(), 0.2, b as f64 + 0.9 * rand::random::<f64>());
@@ -115,7 +115,9 @@ fn main() {
 				}
 			}
 		}
-	}*/
+	}
+	*/
+
 	let mat1 = Material::Dielectric{ ir: 1.5 };
 	let mat2 = Material::Lambertain{ albedo: Vec3::new(0.4, 0.2, 0.1) };
 	let mat3 = Material::Metal{ albedo: Vec3::new(0.7, 0.6, 0.5), fuzz: 0.0 };
@@ -128,23 +130,29 @@ fn main() {
 	let mut last_mouse_pos: (f32, f32) = window.get_mouse_pos(minifb::MouseMode::Clamp).unwrap();
 
 	while window.is_open() && !window.is_key_down(Key::Escape) {
-		//let progress_bar_style = ProgressStyle::with_template("{elapsed} {percent}% {wide_bar:.green/white}").unwrap();
-		(0..height as usize)
-			.cartesian_product(0..width as usize)
-			.collect::<Vec<(usize, usize)>>()
-			.iter()//.into_par_iter()
-			//.progress_count(width as u64 * height as u64).with_style(progress_bar_style).with_finish(indicatif::ProgressFinish::Abandon)
-			.for_each(|(y, x)| {
-				let x = *x;
-				let y = *y;
-				let ray = camera.get_ray(x as f64, y as f64);
-				//let mut final_color = reflection_hotspot(&ray, &scene, max_depth);
-				let mut final_color = ray_color(&ray, &scene, max_depth);
-				final_color = Vec3::new(linear_to_gamma(final_color.x), linear_to_gamma(final_color.y), linear_to_gamma(final_color.z));
-				let image_index = y * width as usize + x;
-				accum_image[image_index] = accum_image[image_index] + final_color;
-				final_image.put_pixel(x as u32, y as u32, vec3_to_rgb(&(accum_image[image_index] / (frame_count as f64))));
+		// TODO: headless mode with progress bar using indicatif
+
+		accum_image
+		    .par_chunks_exact_mut(width)
+			.enumerate()
+			.for_each(|(y, row)| {
+				for x in 0..width {
+					let ray = camera.get_ray(x as f64, y as f64);
+					let mut final_color = ray_color(&ray, &scene, max_depth);
+					final_color = Vec3::new(linear_to_gamma(final_color.x), linear_to_gamma(final_color.y), linear_to_gamma(final_color.z));
+					row[x] = row[x] + final_color;
+				}
 			});
+
+		for y in 0..height {
+			for x in 0..width {
+				let image_index = y * width as usize + x;
+                final_image.put_pixel(x as u32, y as u32, vec3_to_rgb(&(accum_image[image_index] / (frame_count as f64))));
+            }
+		}
+		for (index, pixel) in final_image.pixels_mut().enumerate() {
+			*pixel = vec3_to_rgb(&(accum_image[index] / (frame_count as f64)));
+		}
 		frame_count += 1;
 
 		let mouse_pos = window.get_mouse_pos(minifb::MouseMode::Clamp).unwrap();
