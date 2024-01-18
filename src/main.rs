@@ -2,6 +2,7 @@ use rayon::prelude::*;
 use image::*;
 use minifb::MouseButton;
 use minifb::{Key, Window, WindowOptions};
+use std::time::Instant;
 use rust_tracer::math::*;
 use rust_tracer::scene::*;
 use rust_tracer::camera::Camera;
@@ -128,10 +129,15 @@ fn main() {
 	scene.add_cube(Vec3::new(-4.0, 0.5, 2.5), Vec3::uniform(0.8), mat2.clone());
 
 	let mut last_mouse_pos: (f32, f32) = window.get_mouse_pos(minifb::MouseMode::Clamp).unwrap();
+	let mut last_update = Instant::now();
 
 	while window.is_open() && !window.is_key_down(Key::Escape) {
-		// TODO: headless mode with progress bar using indicatif
+		let now = Instant::now();
+		let delta_time = (now - last_update).as_secs_f64();
+		last_update = now;
 
+
+		// TODO: headless mode with progress bar using indicatif
 		accum_image
 		    .par_chunks_exact_mut(width)
 			.enumerate()
@@ -161,29 +167,31 @@ fn main() {
 			accum_image.resize(0, Vec3::zero());
 			accum_image.resize(width * height, Vec3::zero());
 			direction.rotate_y((last_mouse_pos.0 - mouse_pos.0) as f64 * 0.005);
+			direction = direction.normalize();
+
 			let mut forward = 0.0;
 			if window.is_key_down(Key::W) {
-				forward += 0.2;
+				forward += 1.0;
 			}
 			if window.is_key_down(Key::S) {
-				forward -= 0.2;
+				forward -= 1.0;
 			}
 			let mut left = 0.0;
 			if window.is_key_down(Key::A) {
-				left -= 0.2;
+				left -= 1.0;
 			}
 			if window.is_key_down(Key::D) {
-				left += 0.2;
+				left += 1.0;
 			}
 			if window.is_key_down(Key::E) {
-				camera.origin.y += 0.2;
+				camera.origin.y += 1.0;
 			}
 			if window.is_key_down(Key::Q) {
-				camera.origin.y -= 0.2;
+				camera.origin.y -= 1.0;
 			}
-			camera.origin = camera.origin + direction * forward;
-			camera.origin = camera.origin + direction.cross(&Vec3::new(0.0, 1.0, 0.0)) * left;
-			direction = direction.normalize();
+			let mut move_dir = direction * forward + direction.cross(&Vec3::new(0.0, 1.0, 0.0)) * left;
+			move_dir = if move_dir == Vec3::new(0.0, 0.0, 0.0) { Vec3::new(0.0, 0.0, 0.0) } else { move_dir.normalize() };
+			camera.origin = camera.origin + move_dir * delta_time * 5.0;
 			camera = Camera::new(
 				camera.origin, 
 				direction, 
