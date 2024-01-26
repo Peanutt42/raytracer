@@ -3,10 +3,10 @@ use image::*;
 use minifb::MouseButton;
 use minifb::{Key, Window, WindowOptions};
 use std::time::Instant;
-use rust_tracer::math::*;
-use rust_tracer::scene::*;
-use rust_tracer::camera::Camera;
-use rust_tracer::materials::*;
+use raytracer::math::*;
+use raytracer::scene::*;
+use raytracer::camera::Camera;
+use raytracer::materials::*;
 
 fn vec3_to_rgb(v: &Vec3) -> image::Rgb<u8> {
 	Rgb([(v.x * 255.0) as u8, (v.y * 255.0) as u8, (v.z * 255.0) as u8])
