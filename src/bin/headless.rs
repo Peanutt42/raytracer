@@ -1,5 +1,6 @@
 use indicatif::ParallelProgressIterator;
 use rayon::prelude::*;
+use std::time::Instant;
 use raytracer::math::*;
 use raytracer::scene::*;
 use raytracer::camera::Camera;
@@ -82,11 +83,11 @@ fn main() {
 					// glass
 					let material = Material::Dielectric{ ir: 1.5 };
 					if random(0.0, 1.0) > 0.5 {
-						scene.add_sphere(center, 0.2, material.clone());
+						scene.add_sphere(center, 0.2, material);
 						scene.add_sphere(center, -0.19, material)
 					}
 					else {
-						scene.add_cube(center, Vec3::uniform(0.2), material.clone());
+						scene.add_cube(center, Vec3::uniform(0.2), material);
 						scene.add_cube(center, Vec3::uniform(-0.19), material);
 					}
 				}
@@ -98,11 +99,13 @@ fn main() {
 	let mat1 = Material::Dielectric{ ir: 1.5 };
 	let mat2 = Material::Lambertain{ albedo: Vec3::new(0.4, 0.2, 0.1) };
 	let mat3 = Material::Metal{ albedo: Vec3::new(0.7, 0.6, 0.5), fuzz: 0.0 };
-	scene.add_sphere(Vec3::new(0.0, 1.0, 0.0), 1.0, mat1.clone());
-	scene.add_sphere(Vec3::new(0.0, 1.0, 0.0), -0.98, mat1.clone());
-	scene.add_sphere(Vec3::new(4.0, 1.0, 0.0), 1.0, mat2.clone());
-	scene.add_sphere(Vec3::new(-4.0, 1.0, 0.0), 1.0, mat3.clone());
-	scene.add_cube(Vec3::new(-4.0, 0.5, 2.5), Vec3::uniform(0.8), mat2.clone());
+	scene.add_sphere(Vec3::new(0.0, 1.0, 0.0), 1.0, mat1);
+	scene.add_sphere(Vec3::new(0.0, 1.0, 0.0), -0.98, mat1);
+	scene.add_sphere(Vec3::new(4.0, 1.0, 0.0), 1.0, mat2);
+	scene.add_sphere(Vec3::new(-4.0, 1.0, 0.0), 1.0, mat3);
+	scene.add_cube(Vec3::new(-4.0, 0.5, 2.5), Vec3::uniform(0.8), mat2);
+
+	let render_start = Instant::now();
 
 	let mut output = vec![Vec3::zero(); width * height];
 	output
@@ -120,6 +123,8 @@ fn main() {
 				*output_color = Vec3::new(linear_to_gamma(final_color.x), linear_to_gamma(final_color.y), linear_to_gamma(final_color.z));
 			}
 		});
+
+	println!("Rendering took {}s", (Instant::now() - render_start).as_secs_f32());
 
 	let mut image = image::RgbImage::new(width as u32, height as u32);
 	for y in 0..height {

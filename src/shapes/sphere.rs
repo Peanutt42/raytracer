@@ -1,7 +1,8 @@
 use crate::math::*;
 use crate::materials::*;
-use crate::scene::Object;
+use crate::{Hittable, Bounded, Renderable};
 
+#[derive(Clone, Copy)]
 pub struct Sphere {
 	pub center: Vec3,
 	pub radius: f64,
@@ -18,7 +19,7 @@ impl Sphere {
 	}
 }
 
-impl Object for Sphere {
+impl Hittable for Sphere {
 	fn hit(&self, ray: &Ray) -> Option<f64> {
 		// a = ray origin
 		// b = ray direction
@@ -42,17 +43,21 @@ impl Object for Sphere {
 		// (-b +- sqrt(discriminant)) / 2a
 		Some((-b - discriminant.sqrt()) / (2.0 * a))
 	}
+}
 
+impl Bounded for Sphere {
+	fn get_aabb(&self) -> AABB {
+		let radius_vec3 = Vec3::new(self.radius, self.radius, self.radius);
+		AABB::new(self.center - radius_vec3, self.center + radius_vec3)
+	}
+}
+
+impl Renderable for Sphere {
 	fn get_normal(&self, p: &Vec3, _ray: &Ray) -> Vec3 {
 		(*p - self.center) / self.radius
 	}
 
 	fn get_material(&self) -> Option<Material> {
 		Some(self.material.clone())
-	}
-
-	fn get_aabb(&self) -> AABB {
-		let radius_vec3 = Vec3::new(self.radius, self.radius, self.radius);
-		AABB::new(self.center - radius_vec3, self.center + radius_vec3)
 	}
 }

@@ -1,7 +1,8 @@
 use crate::math::*;
 use crate::materials::*;
-use crate::scene::Object;
+use crate::scene::{Hittable, Bounded, Renderable};
 
+#[derive(Clone, Copy)]
 pub struct Cube {
 	pub center: Vec3,
 	pub size: Vec3,
@@ -18,7 +19,7 @@ impl Cube {
 	}
 }
 
-impl Object for Cube {
+impl Hittable for Cube {
 	fn hit(&self, ray: &Ray) -> Option<f64> {
 		let origin = ray.origin - self.center;
 
@@ -38,7 +39,16 @@ impl Object for Cube {
 			Some(t_n)
 		}
 	}
+}
 
+impl Bounded for Cube {
+	fn get_aabb(&self) -> AABB {
+		let half_extent = self.size / 2.0;
+		AABB::new(self.center - half_extent, self.center + half_extent)
+	}
+}
+
+impl Renderable for Cube {
 	fn get_normal(&self, p: &Vec3, _ray: &Ray) -> Vec3 {
 		let rel_p = *p - self.center;
 		let maxc = rel_p.x.abs().max(rel_p.y.abs()).max(rel_p.z.abs());
@@ -53,10 +63,5 @@ impl Object for Cube {
 
 	fn get_material(&self) -> Option<Material> {
 		Some(self.material.clone())
-	}
-
-	fn get_aabb(&self) -> AABB {
-		let half_extent = self.size / 2.0;
-		AABB::new(self.center - half_extent, self.center + half_extent)
 	}
 }

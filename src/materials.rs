@@ -2,8 +2,7 @@ use crate::math::*;
 use crate::scene::RayHit;
 
 
-#[non_exhaustive]
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum Material {
 	None,
 	Lambertain { albedo: Vec3 },

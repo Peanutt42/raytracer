@@ -297,6 +297,10 @@ impl AABB {
 		AABB { min, max }
 	}
 
+	pub fn center(&self) -> Vec3 {
+		self.min + (self.max - self.min) / 2.0
+	}
+
 	pub fn hit(&self, ray: &Ray) -> bool {
 		for a in 0..3 {
 			let inv_d = 1.0 / ray.dir[a];
@@ -328,7 +332,7 @@ impl AABB {
 		}
 	}
 
-	pub fn surrounding(a: &AABB, b: &AABB) -> Self {
+	pub fn surrounding(a: AABB, b: AABB) -> Self {
 		Self::new(
 			Vec3::new(
 				f64::min(a.min.x, b.min.x),
@@ -341,5 +345,14 @@ impl AABB {
 				f64::max(a.max.z, b.max.z)
 			),
 		)
+	}
+}
+
+impl Default for AABB {
+	fn default() -> Self {
+		Self {
+			min: Vec3::new(0.0, 0.0, 0.0),
+			max: Vec3::new(0.0, 0.0, 0.0),
+		}
 	}
 }
