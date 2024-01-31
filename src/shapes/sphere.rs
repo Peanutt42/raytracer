@@ -40,7 +40,7 @@ impl Object for Sphere {
 		}
 		
 		// (-b +- sqrt(discriminant)) / 2a
-		return Some((-b - discriminant.sqrt()) / (2.0 * a));
+		Some((-b - discriminant.sqrt()) / (2.0 * a))
 	}
 
 	fn get_normal(&self, p: &Vec3, _ray: &Ray) -> Vec3 {

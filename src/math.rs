@@ -71,7 +71,7 @@ impl Vec3 {
 	}
 
 	pub fn reflect(&self, normal: &Vec3) -> Self {
-		*self - (*normal * 2.0 * self.dot(&normal))
+		*self - (*normal * 2.0 * self.dot(normal))
 	}
 
 	pub fn refract(uv: &Vec3, n: &Vec3, etai_over_etat: f64) -> Vec3 {
@@ -100,18 +100,18 @@ impl Vec3 {
 	}
 
 	pub fn rotate_x(&mut self, theta: f64) {
-        let new_y = self.y * theta.cos() + self.z * theta.sin();
-        let new_z = -self.y * theta.sin() + self.z * theta.cos();
-        self.y = new_y;
-        self.z = new_z;
-    }
+		let new_y = self.y * theta.cos() + self.z * theta.sin();
+		let new_z = -self.y * theta.sin() + self.z * theta.cos();
+		self.y = new_y;
+		self.z = new_z;
+	}
 
-    pub fn rotate_y(&mut self, theta: f64) {
-        let new_x = self.x * theta.cos() + self.z * theta.sin();
-        let new_z = -self.x * theta.sin() + self.z * theta.cos();
-        self.x = new_x;
-        self.z = new_z;
-    }
+	pub fn rotate_y(&mut self, theta: f64) {
+		let new_x = self.x * theta.cos() + self.z * theta.sin();
+		let new_z = -self.x * theta.sin() + self.z * theta.cos();
+		self.x = new_x;
+		self.z = new_z;
+	}
 
 	pub fn random(min: f64, max: f64) -> Self {
 		Vec3 {
@@ -273,9 +273,9 @@ pub struct Ray {
 
 impl Ray {
 	pub fn new(origin: Vec3, dir: Vec3) -> Self {
-		Ray {
-			origin: origin,
-			dir: dir,
+		Self {
+			origin,
+			dir,
 		}
 	}
 
@@ -303,9 +303,7 @@ impl AABB {
 			let mut t0 = (self.min[a] - ray.origin[a]) * inv_d;
 			let mut t1 = (self.max[a] - ray.origin[a]) * inv_d;
 			if inv_d < 0.0 {
-				let tmp = t0;
-				t0 = t1;
-				t1 = tmp;
+				std::mem::swap(&mut t0, &mut t1);
 			}
 			let min = if t0 > 0.001 {t0} else {0.001};
 			let max = if t1 < f64::MAX {t1} else {f64::MAX};
@@ -313,7 +311,7 @@ impl AABB {
 				return false;
 			}
 		}
-		return true;
+		true
 	}
 
 	// returns axis with the largest size (x = 0, y = 1, z = 2)

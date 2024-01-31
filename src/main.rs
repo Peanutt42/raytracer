@@ -20,13 +20,13 @@ fn linear_to_gamma(linear: f64) -> f64 {
 	linear.sqrt()
 }
 
-fn ray_color(ray: &Ray, scene: &Scene, depth: usize) -> Vec3 {
+fn ray_color(ray: &Ray, scene: &Scene, depth: i32) -> Vec3 {
 	if depth <= 0 {
 		return Vec3::zero();
 	}
 	
-	if let Some(hit) = scene.trace(&ray) {
-		if let Some(scattered) = hit.material.scatter(&ray, &hit) {
+	if let Some(hit) = scene.trace(ray) {
+		if let Some(scattered) = hit.material.scatter(ray, &hit) {
 			return scattered.attenuation * ray_color(&scattered.scattered, scene, depth - 1);
 		}
 		return Vec3::zero();
@@ -48,7 +48,7 @@ fn main() {
 	let mut frame_count = 1;
 	let mut final_image = image::RgbImage::new(width as u32, height as u32);
 
-	let mut window = Window::new("Rust Raytracer", width as usize, height as usize,
+	let mut window = Window::new("Rust Raytracer", width, height,
 	WindowOptions {
 		resize: true,
 		scale: minifb::Scale::X1,
@@ -63,9 +63,8 @@ fn main() {
 		Vec3::new(1.0, 1.5, 3.0), 
 		direction, 
 		90.0,
-		&Vec3::new(0.0, 1.0, 0.0),
 		10.0, 0.6,
-		width as usize, height as usize);
+		width, height);
 	
 
 
@@ -139,22 +138,22 @@ fn main() {
 
 		// TODO: headless mode with progress bar using indicatif
 		accum_image
-		    .par_chunks_exact_mut(width)
+			.par_chunks_exact_mut(width)
 			.enumerate()
 			.for_each(|(y, row)| {
-				for x in 0..width {
+				for (x, output_color) in row.iter_mut().enumerate() {
 					let ray = camera.get_ray(x as f64, y as f64);
 					let mut final_color = ray_color(&ray, &scene, max_depth);
 					final_color = Vec3::new(linear_to_gamma(final_color.x), linear_to_gamma(final_color.y), linear_to_gamma(final_color.z));
-					row[x] = row[x] + final_color;
+					*output_color = *output_color + final_color;
 				}
 			});
 
 		for y in 0..height {
 			for x in 0..width {
-				let image_index = y * width as usize + x;
-                final_image.put_pixel(x as u32, y as u32, vec3_to_rgb(&(accum_image[image_index] / (frame_count as f64))));
-            }
+				let image_index = y * width + x;
+				final_image.put_pixel(x as u32, y as u32, vec3_to_rgb(&(accum_image[image_index] / (frame_count as f64))));
+			}
 		}
 		for (index, pixel) in final_image.pixels_mut().enumerate() {
 			*pixel = vec3_to_rgb(&(accum_image[index] / (frame_count as f64)));
@@ -198,18 +197,17 @@ fn main() {
 				camera.origin, 
 				direction, 
 				90.0,
-				&Vec3::new(0.0, 1.0, 0.0),
 				10.0, 0.6,
-				width as usize, height as usize);
+				width, height);
 			frame_count = 1;
 		}
 		last_mouse_pos = mouse_pos;
 
 		// Update the window
-		let mut buffer: Vec<u32> = vec![0; width as usize * height as usize];
+		let mut buffer: Vec<u32> = vec![0; width * height];
 		for (i, pixel) in final_image.as_raw().chunks(3).enumerate() {
 			buffer[i] = rgb_to_u32(pixel[0] as u32, pixel[1] as u32, pixel[2] as u32)
 		}
-		window.update_with_buffer(&buffer, width as usize, height as usize).unwrap();
+		window.update_with_buffer(&buffer, width, height).unwrap();
 	}
 }

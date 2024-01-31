@@ -33,7 +33,7 @@ impl Object for Cube {
 		let t_f: f64 = t2.x.min(t2.y).min(t2.z);
 
 		if t_n > t_f || t_f <= 0. || t_n <= 0. {
-			return None;
+			None
 		} else {
 			Some(t_n)
 		}

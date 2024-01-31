@@ -38,7 +38,9 @@ pub struct Scene {
 
 impl Scene {
 	pub fn new() -> Self {
-		Scene{ objects: Vec::new() }
+		Self {
+			objects: Vec::new(),
+		}
 	}
 
 	pub fn add_sphere(&mut self, center: Vec3, radius: f64, material: Material) {
@@ -53,23 +55,29 @@ impl Scene {
 		let mut closest_hit_distance = f64::MAX;
 		let mut closest_sphere: Option<&Box<dyn Object + Sync>> = None;
 		for object in self.objects.iter() {
-			if let Some(t) = object.hit(&ray) {
+			if let Some(t) = object.hit(ray) {
 				if t > 0.001 && t < closest_hit_distance {
 					closest_hit_distance = t;
-					closest_sphere = Some(&object);
+					closest_sphere = Some(object);
 				}
 			}
 		}
 
 		if let Some(object) = closest_sphere {            
-			return get_ray_hit(object, closest_hit_distance, ray);
+			return get_ray_hit(object.as_ref(), closest_hit_distance, ray);
 		}
 
 		None
 	}
 }
 
-fn get_ray_hit(object: &Box<dyn Object + Sync>, distance: f64, ray: &Ray) -> Option<RayHit> {
+impl Default for Scene {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
+fn get_ray_hit(object: &(dyn Object + Sync), distance: f64, ray: &Ray) -> Option<RayHit> {
 	if let Some(material) = object.get_material() {
 		let p = ray.at(distance);
 		let mut normal = object.get_normal(&p, ray);
