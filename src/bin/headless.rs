@@ -111,9 +111,9 @@ fn main() {
 		.enumerate()
 		.for_each(|(y, row)| {
 			for (x, output_color) in row.iter_mut().enumerate() {
-				let ray = camera.get_ray(x as f64, y as f64);
 				let mut final_color = Vec3::zero();
 				for _ in 0..samples {
+					let ray = camera.get_ray(x as f64, y as f64);
 					final_color = final_color + ray_color(&ray, &scene, max_depth);
 				}
 				final_color = final_color / samples as f64;
