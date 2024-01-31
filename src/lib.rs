@@ -1,5 +1,10 @@
 pub mod math;
+pub use math::*;
 pub mod scene;
+pub use scene::*;
 pub mod camera;
+pub use camera::*;
 pub mod materials;
+pub use materials::*;
 pub mod shapes;
+pub use shapes::*;

@@ -48,7 +48,7 @@ fn main() {
 	let mut frame_count = 1;
 	let mut final_image = image::RgbImage::new(width as u32, height as u32);
 
-	let mut window = Window::new("Rust Raytracer", width, height,
+	let mut window = Window::new("Raytracer - Runtime", width, height,
 	WindowOptions {
 		resize: true,
 		scale: minifb::Scale::X1,
@@ -73,51 +73,6 @@ fn main() {
 	let material_ground = Material::Lambertain{ albedo: Vec3::new(0.5, 0.5, 0.5) };
 	scene.add_cube(Vec3::new(0.0,-1000.0,0.0), Vec3::uniform(1000.0), material_ground);
 
-	/*
-	for a in -11..11 {
-		for b in -11..11 {
-			let random_mat = rand::random::<f64>();
-			let center = Vec3::new(a as f64 + 0.9 * rand::random::<f64>(), 0.2, b as f64 + 0.9 * rand::random::<f64>());
-
-			if (center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
-				if random_mat < 0.35 {
-					// diffuse
-					let albedo = Vec3::random(0.0, 1.0) * Vec3::random(0.0, 1.0);
-					let material = Material::Lambertain{ albedo };
-					if random(0.0, 1.0) > 0.5 {
-						scene.add_sphere(center, 0.2, material);
-					}
-					else {
-						scene.add_cube(center, Vec3::uniform(0.2), material);
-					}
-				} else if random_mat < 0.85 {
-					// metal
-					let albedo = Vec3::random(0.5, 1.0);
-					let fuzz = random(0.0, 0.3);
-					let material = Material::Metal{ albedo, fuzz };
-					if random(0.0, 1.0) > 0.5 {
-						scene.add_sphere(center, 0.2, material);
-					}
-					else {
-						scene.add_cube(center, Vec3::uniform(0.2), material);
-					}
-				} else {
-					// glass
-					let material = Material::Dielectric{ ir: 1.5 };
-					if random(0.0, 1.0) > 0.5 {
-						scene.add_sphere(center, 0.2, material.clone());
-						scene.add_sphere(center, -0.19, material)
-					}
-					else {
-						scene.add_cube(center, Vec3::uniform(0.2), material.clone());
-						scene.add_cube(center, Vec3::uniform(-0.19), material);
-					}
-				}
-			}
-		}
-	}
-	*/
-
 	let mat1 = Material::Dielectric{ ir: 1.5 };
 	let mat2 = Material::Lambertain{ albedo: Vec3::new(0.4, 0.2, 0.1) };
 	let mat3 = Material::Metal{ albedo: Vec3::new(0.7, 0.6, 0.5), fuzz: 0.0 };
@@ -135,8 +90,6 @@ fn main() {
 		let delta_time = (now - last_update).as_secs_f64();
 		last_update = now;
 
-
-		// TODO: headless mode with progress bar using indicatif
 		accum_image
 			.par_chunks_exact_mut(width)
 			.enumerate()
