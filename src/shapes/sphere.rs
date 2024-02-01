@@ -57,7 +57,7 @@ impl Renderable for Sphere {
 		(*p - self.center) / self.radius
 	}
 
-	fn get_material(&self) -> Option<Material> {
-		Some(self.material.clone())
+	fn get_material(&self) -> Option<&Material> {
+		Some(&self.material)
 	}
 }

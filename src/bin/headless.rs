@@ -51,6 +51,7 @@ fn main() {
 	let material_ground = Material::Lambertain{ albedo: Vec3::new(0.5, 0.5, 0.5) };
 	scene.add_cube(Vec3::new(0.0,-1000.0,0.0), Vec3::uniform(1000.0), material_ground);
 
+	let mut rand = rand::thread_rng();
 	
 	for a in -11..11 {
 		for b in -11..11 {
@@ -62,7 +63,7 @@ fn main() {
 					// diffuse
 					let albedo = Vec3::random(0.0, 1.0) * Vec3::random(0.0, 1.0);
 					let material = Material::Lambertain{ albedo };
-					if random(0.0, 1.0) > 0.5 {
+					if random(0.0, 1.0, &mut rand) > 0.5 {
 						scene.add_sphere(center, 0.2, material);
 					}
 					else {
@@ -71,9 +72,9 @@ fn main() {
 				} else if random_mat < 0.85 {
 					// metal
 					let albedo = Vec3::random(0.5, 1.0);
-					let fuzz = random(0.0, 0.3);
+					let fuzz = random(0.0, 0.3, &mut rand);
 					let material = Material::Metal{ albedo, fuzz };
-					if random(0.0, 1.0) > 0.5 {
+					if random(0.0, 1.0, &mut rand) > 0.5 {
 						scene.add_sphere(center, 0.2, material);
 					}
 					else {
@@ -82,7 +83,7 @@ fn main() {
 				} else {
 					// glass
 					let material = Material::Dielectric{ ir: 1.5 };
-					if random(0.0, 1.0) > 0.5 {
+					if random(0.0, 1.0, &mut rand) > 0.5 {
 						scene.add_sphere(center, 0.2, material);
 						scene.add_sphere(center, -0.19, material)
 					}
@@ -113,10 +114,11 @@ fn main() {
 		.progress()
 		.enumerate()
 		.for_each(|(y, row)| {
+			let mut rand = rand::thread_rng();
 			for (x, output_color) in row.iter_mut().enumerate() {
 				let mut final_color = Vec3::zero();
 				for _ in 0..samples {
-					let ray = camera.get_ray(x as f64, y as f64);
+					let ray = camera.get_ray(x as f64, y as f64, &mut rand);
 					final_color = final_color + ray_color(&ray, &scene, max_depth);
 				}
 				final_color = final_color / samples as f64;

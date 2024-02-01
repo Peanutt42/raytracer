@@ -14,19 +14,19 @@ pub trait Renderable {
 	// Returns normal and if it is front-/back-face
 	fn get_normal(&self, p: &Vec3, ray: &Ray) -> Vec3;
 
-	fn get_material(&self) -> Option<Material>;
+	fn get_material(&self) -> Option<&Material>;
 }
 
 
-pub struct RayHit {
+pub struct RayHit<'a> {
 	pub point: Vec3,
 	pub normal: Vec3,
-	pub material: Material,
+	pub material: &'a Material,
 	pub front_face: bool,
 }
 
-impl RayHit {
-	pub fn new(point: Vec3, normal: Vec3, material: Material, front_face: bool) -> Self {
+impl<'a> RayHit<'a> {
+	pub fn new(point: Vec3, normal: Vec3, material: &'a Material, front_face: bool) -> Self {
 		RayHit {
 			point,
 			normal,
@@ -68,7 +68,7 @@ impl Renderable for Object {
 		}
 	}
 
-	fn get_material(&self) -> Option<Material> {
+	fn get_material(&self) -> Option<&Material> {
 		match self {
 			Self::Sphere(sphere) => sphere.get_material(),
 			Self::Cube(cube) => cube.get_material(),
@@ -121,7 +121,7 @@ impl Default for Scene {
 	}
 }
 
-fn get_ray_hit(object: &dyn Renderable, distance: f64, ray: &Ray) -> Option<RayHit> {
+fn get_ray_hit<'a>(object: &'a dyn Renderable, distance: f64, ray: &Ray) -> Option<RayHit<'a>> {
 	if let Some(material) = object.get_material() {
 		let p = ray.at(distance);
 		let mut normal = object.get_normal(&p, ray);

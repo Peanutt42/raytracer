@@ -76,11 +76,11 @@ fn main() {
 	let mat1 = Material::Dielectric{ ir: 1.5 };
 	let mat2 = Material::Lambertain{ albedo: Vec3::new(0.4, 0.2, 0.1) };
 	let mat3 = Material::Metal{ albedo: Vec3::new(0.7, 0.6, 0.5), fuzz: 0.0 };
-	scene.add_sphere(Vec3::new(0.0, 1.0, 0.0), 1.0, mat1.clone());
-	scene.add_sphere(Vec3::new(0.0, 1.0, 0.0), -0.98, mat1.clone());
-	scene.add_sphere(Vec3::new(4.0, 1.0, 0.0), 1.0, mat2.clone());
-	scene.add_sphere(Vec3::new(-4.0, 1.0, 0.0), 1.0, mat3.clone());
-	scene.add_cube(Vec3::new(-4.0, 0.5, 2.5), Vec3::uniform(0.8), mat2.clone());
+	scene.add_sphere(Vec3::new(0.0, 1.0, 0.0), 1.0, mat1);
+	scene.add_sphere(Vec3::new(0.0, 1.0, 0.0), -0.98, mat1);
+	scene.add_sphere(Vec3::new(4.0, 1.0, 0.0), 1.0, mat2);
+	scene.add_sphere(Vec3::new(-4.0, 1.0, 0.0), 1.0, mat3);
+	scene.add_cube(Vec3::new(-4.0, 0.5, 2.5), Vec3::uniform(0.8), mat2);
 
 	let mut last_mouse_pos: (f32, f32) = window.get_mouse_pos(minifb::MouseMode::Clamp).unwrap();
 	let mut last_update = Instant::now();
@@ -88,14 +88,16 @@ fn main() {
 	while window.is_open() && !window.is_key_down(Key::Escape) {
 		let now = Instant::now();
 		let delta_time = (now - last_update).as_secs_f64();
+		println!("{}", 1.0 / delta_time);
 		last_update = now;
 
 		accum_image
 			.par_chunks_exact_mut(width)
 			.enumerate()
 			.for_each(|(y, row)| {
+				let mut rand = rand::thread_rng();
 				for (x, output_color) in row.iter_mut().enumerate() {
-					let ray = camera.get_ray(x as f64, y as f64);
+					let ray = camera.get_ray(x as f64, y as f64, &mut rand);
 					let mut final_color = ray_color(&ray, &scene, max_depth);
 					final_color = Vec3::new(linear_to_gamma(final_color.x), linear_to_gamma(final_color.y), linear_to_gamma(final_color.z));
 					*output_color = *output_color + final_color;

@@ -61,7 +61,7 @@ impl Renderable for Cube {
 		Vec3::new(0.0, 0.0, rel_p.z.signum())
 	}
 
-	fn get_material(&self) -> Option<Material> {
-		Some(self.material.clone())
+	fn get_material(&self) -> Option<&Material> {
+		Some(&self.material)
 	}
 }

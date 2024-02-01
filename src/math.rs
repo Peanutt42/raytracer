@@ -1,11 +1,13 @@
 use std::ops::{Add, Sub, Mul, Div, Neg, Index, IndexMut};
 
+use rand::Rng;
+
 pub fn radians(degrees: f64) -> f64 {
 	degrees * std::f64::consts::PI / 180.0
 }
 
-pub fn random(min: f64, max: f64) -> f64 {
-	min + (max - min) * rand::random::<f64>()
+pub fn random(min: f64, max: f64, rand: &mut rand::prelude::ThreadRng) -> f64 {
+	min + (max - min) * rand.gen::<f64>()
 }
 
 
@@ -126,8 +128,8 @@ impl Vec3 {
 		p.normalize()
 	}
 
-	pub fn random_in_unit_disk() -> Self {
-		let p = Vec3::new(random(-1.0, 1.0), random(-1.0, 1.0), 0.0);
+	pub fn random_in_unit_disk(rand: &mut rand::prelude::ThreadRng) -> Self {
+		let p = Vec3::new(random(-1.0, 1.0, rand), random(-1.0, 1.0, rand), 0.0);
 		p.normalize()
 	}
 }

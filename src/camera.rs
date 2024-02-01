@@ -63,22 +63,22 @@ impl Camera {
 		}
 	}
 
-	fn pixel_sample_square(&self) -> Vec3 {
-		(random(-0.5, 0.5) * self.pixel_delta_x) + (random(-0.5, 0.5) * self.pixel_delta_y)
+	fn pixel_sample_square(&self, rand: &mut rand::prelude::ThreadRng) -> Vec3 {
+		(random(-0.5, 0.5, rand) * self.pixel_delta_x) + (random(-0.5, 0.5, rand) * self.pixel_delta_y)
 	}
 
-	fn defocus_disk_sample(&self) -> Vec3 {
-		let p = Vec3::random_in_unit_disk();
+	fn defocus_disk_sample(&self, rand: &mut rand::prelude::ThreadRng) -> Vec3 {
+		let p = Vec3::random_in_unit_disk(rand);
 		self.origin + (p.x * self.defocus_disk_x) * (p.y * self.defocus_disk_y)
 	}
 
-	pub fn get_ray(&self, x: f64, y: f64) -> Ray {
+	pub fn get_ray(&self, x: f64, y: f64, rand: &mut rand::prelude::ThreadRng) -> Ray {
 		let pixel_center = self.pixel00_loc + (self.pixel_delta_x * x) + (self.pixel_delta_y * y);
-		let pixel_sample = pixel_center + self.pixel_sample_square();
+		let pixel_sample = pixel_center + self.pixel_sample_square(rand);
 		let ray_origin: Vec3 = if self.defocus_angle <= 0.0 {
 			self.origin
 		} else {
-			self.defocus_disk_sample()
+			self.defocus_disk_sample(rand)
 		};
 		Ray::new(ray_origin, (pixel_sample - ray_origin).normalize())
 	}
