@@ -88,7 +88,6 @@ fn main() {
 	while window.is_open() && !window.is_key_down(Key::Escape) {
 		let now = Instant::now();
 		let delta_time = (now - last_update).as_secs_f64();
-		println!("{}", 1.0 / delta_time);
 		last_update = now;
 
 		accum_image
