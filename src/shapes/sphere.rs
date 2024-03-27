@@ -29,9 +29,9 @@ impl Hittable for Sphere {
 
 		let origin = ray.origin - self.center;
 
-		let a = ray.dir.dot(&ray.dir);
-		let b = 2.0 * origin.dot(&ray.dir);
-		let c = origin.dot(&origin) - self.radius * self.radius;
+		let a = ray.dir.dot(ray.dir);
+		let b = 2.0 * origin.dot(ray.dir);
+		let c = origin.dot(origin) - self.radius * self.radius;
 
 		// Quadratic forumula discriminant
 		// b² - 4ac

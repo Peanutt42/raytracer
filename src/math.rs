@@ -35,11 +35,11 @@ impl Vec3 {
 		Vec3 { x: 1.0, y: 1.0, z: 1.0 }
 	}
 
-	pub fn dot(&self, other: &Self) -> f64 {
+	pub fn dot(&self, other: Self) -> f64 {
 		self.x * other.x + self.y * other.y + self.z * other.z
 	}
 
-	pub fn cross(&self, other: &Self) -> Self {
+	pub fn cross(&self, other: Self) -> Self {
 		Vec3 {
 			x: self.y * other.z - self.z * other.y,
 			y: self.z * other.x - self.x * other.z,
@@ -72,14 +72,14 @@ impl Vec3 {
 		}
 	}
 
-	pub fn reflect(&self, normal: &Vec3) -> Self {
-		*self - (*normal * 2.0 * self.dot(normal))
+	pub fn reflect(&self, normal: Vec3) -> Self {
+		*self - (normal * 2.0 * self.dot(normal))
 	}
 
-	pub fn refract(uv: &Vec3, n: &Vec3, etai_over_etat: f64) -> Vec3 {
-		let cos_theta = (-(*uv)).dot(n).min(1.0);
-		let r_out_perp = etai_over_etat * (*uv + cos_theta*(*n));
-		let r_out_parallel = -((1.0 - r_out_perp.length_squared()).abs().sqrt()) * (*n);
+	pub fn refract(uv: Vec3, n: Vec3, etai_over_etat: f64) -> Vec3 {
+		let cos_theta = (-uv).dot(n).min(1.0);
+		let r_out_perp = etai_over_etat * (uv + cos_theta * n);
+		let r_out_parallel = -((1.0 - r_out_perp.length_squared()).abs().sqrt()) * n;
 		r_out_perp + r_out_parallel
 	}
 

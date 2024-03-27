@@ -38,6 +38,16 @@ fn ray_color(ray: &Ray, scene: &Scene, depth: i32) -> Vec3 {
 	Vec3::one() * (1.0-a) + Vec3::new(0.5, 0.7, 1.0) * a
 }
 
+fn get_camera_rotation(yaw: f64, pitch: f64) -> Vec3 {
+	let pitch_radians = pitch.to_radians();
+	let yaw_radians = yaw.to_radians();
+	Vec3::new(
+		yaw_radians.cos() * pitch_radians.cos(),
+		pitch_radians.sin(),
+		yaw_radians.sin() * pitch_radians.cos()
+	)
+}
+
 fn main() {
 	let width = 800;//2560;
 	let height = 600;//1440;//(width * (16 / 9)) as usize;
@@ -57,11 +67,11 @@ fn main() {
 		panic!("Unable to create window: {}", e);
 	});
 
-	
-	let mut direction = Vec3::new(0.0, 0.0, -1.0);
+	let mut yaw = 0.0;
+	let mut pitch = 0.0;
 	let mut camera = Camera::new(
 		Vec3::new(1.0, 1.5, 3.0), 
-		direction, 
+		get_camera_rotation(yaw, pitch), 
 		90.0,
 		10.0, 0.6,
 		width, height);
@@ -119,8 +129,12 @@ fn main() {
 		if window.get_mouse_down(MouseButton::Right) {
 			accum_image.resize(0, Vec3::zero());
 			accum_image.resize(width * height, Vec3::zero());
-			direction.rotate_y((last_mouse_pos.0 - mouse_pos.0) as f64 * 0.005);
-			direction = direction.normalize();
+
+			// camera rotation
+			yaw += (mouse_pos.0 - last_mouse_pos.0) as f64 * 0.25;
+			pitch += (last_mouse_pos.1 - mouse_pos.1) as f64 * 0.25;
+			pitch = pitch.clamp(-90.0, 90.0);
+			let direction = get_camera_rotation(yaw, pitch);
 
 			let mut forward = 0.0;
 			if window.is_key_down(Key::W) {
@@ -143,7 +157,7 @@ fn main() {
 			if window.is_key_down(Key::Q) {
 				up -= 1.0;
 			}
-			let mut move_dir = direction * forward + direction.cross(&Vec3::new(0.0, 1.0, 0.0)) * left;
+			let mut move_dir = direction * forward + direction.cross(Vec3::new(0.0, 1.0, 0.0)) * left;
 			move_dir = if move_dir == Vec3::new(0.0, 0.0, 0.0) { Vec3::new(0.0, 0.0, 0.0) } else { move_dir.normalize() };
 			camera.origin = camera.origin + move_dir * delta_time * 5.0;
 			camera.origin.y += up * delta_time * 5.0;

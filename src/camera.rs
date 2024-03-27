@@ -33,8 +33,8 @@ impl Camera {
 		let viewport_width = viewport_height * (width as f64 / height as f64);
 
 		let w = -direction.normalize();
-		let u = UP.cross(&w).normalize();
-		let v = w.cross(&u);
+		let u = UP.cross(w).normalize();
+		let v = w.cross(u);
 
 		// Calculate the vectors across the horizontal and down the vertical viewport edges.
 		let viewport_u = u * viewport_width;

@@ -26,9 +26,9 @@ impl Material {
 				Some(Scattered{ attenuation: *albedo, scattered: Ray::new(hit.point, scatter_direction) })
 			},
 			Self::Metal { albedo, fuzz } => {
-				let reflected = ray_in.dir.normalize().reflect(&hit.normal);
+				let reflected = ray_in.dir.normalize().reflect(hit.normal);
 				let scattered_dir = reflected + *fuzz * Vec3::random_unit_vector();
-				if scattered_dir.dot(&hit.normal) <= 0.0 {
+				if scattered_dir.dot(hit.normal) <= 0.0 {
 					return None;
 				}
 				let scattered = Ray::new(hit.point, scattered_dir);
@@ -43,15 +43,15 @@ impl Material {
 					};
 		
 				let unit_dir = ray_in.dir.normalize();
-				let cos_theta = f64::min((-unit_dir).dot(&hit.normal), 1.0);
+				let cos_theta = f64::min((-unit_dir).dot(hit.normal), 1.0);
 				let sin_theta = f64::sqrt(1.0 - (cos_theta * cos_theta));
 		
 				let cannot_refract = refration_ratio * sin_theta > 1.0;
 				let direction =
 					if cannot_refract || (Self::reflectance(cos_theta, refration_ratio) > rand::random::<f64>()) {
-						unit_dir.reflect(&hit.normal)
+						unit_dir.reflect(hit.normal)
 					} else {
-						Vec3::refract(&unit_dir, &hit.normal, refration_ratio)
+						Vec3::refract(unit_dir, hit.normal, refration_ratio)
 					};
 		
 				Some(Scattered{ attenuation: Vec3::one(), scattered: Ray::new(hit.point, direction) })

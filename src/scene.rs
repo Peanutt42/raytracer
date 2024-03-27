@@ -125,7 +125,7 @@ fn get_ray_hit<'a>(object: &'a dyn Renderable, distance: f64, ray: &Ray) -> Opti
 	if let Some(material) = object.get_material() {
 		let p = ray.at(distance);
 		let mut normal = object.get_normal(&p, ray);
-		let front_face = ray.dir.dot(&normal) < 0.0;
+		let front_face = ray.dir.dot(normal) < 0.0;
 		if !front_face {
 			normal = -normal;
 		}
