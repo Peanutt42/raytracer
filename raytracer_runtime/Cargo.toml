@@ -1,16 +1,12 @@
 [package]
-name = "raytracer"
+name = "raytracer_runtime"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+raytracer = { path = "../" }
 num-traits = "0.2"
 rand = "0.8.5"
 image = "0.24.7"
 rayon = "1.8"
-
-[workspace]
-members = [
-	"raytracer_headless",
-	"raytracer_runtime",
-]
+minifb = "0.25"

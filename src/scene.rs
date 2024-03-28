@@ -108,10 +108,29 @@ impl Scene {
 		}
 
 		if let Some(object) = closest_object {            
-			return get_ray_hit(object, closest_hit_distance, ray);
+			return Self::get_ray_hit(object, closest_hit_distance, ray);
 		}
 
 		None
+	}
+
+	fn get_ray_hit<'a>(object: &'a dyn Renderable, distance: f64, ray: &Ray) -> Option<RayHit<'a>> {
+		if let Some(material) = object.get_material() {
+			let p = ray.at(distance);
+			let mut normal = object.get_normal(&p, ray);
+			let front_face = ray.dir.dot(normal) < 0.0;
+			if !front_face {
+				normal = -normal;
+			}
+			return Some(RayHit::new(p, normal, material, front_face));
+		}
+		None
+	}
+
+	pub fn get_sky_color(&self, ray_dir: Vec3) -> Vec3 {
+		let unit_dir = ray_dir.normalize();
+		let a = 0.5 * (unit_dir.y + 1.0);
+		Vec3::one() * (1.0-a) + Vec3::new(0.5, 0.7, 1.0) * a
 	}
 }
 
@@ -119,17 +138,4 @@ impl Default for Scene {
 	fn default() -> Self {
 		Self::new()
 	}
-}
-
-fn get_ray_hit<'a>(object: &'a dyn Renderable, distance: f64, ray: &Ray) -> Option<RayHit<'a>> {
-	if let Some(material) = object.get_material() {
-		let p = ray.at(distance);
-		let mut normal = object.get_normal(&p, ray);
-		let front_face = ray.dir.dot(normal) < 0.0;
-		if !front_face {
-			normal = -normal;
-		}
-		return Some(RayHit::new(p, normal, material, front_face));
-	}
-	None
 }

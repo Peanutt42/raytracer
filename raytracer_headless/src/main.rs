@@ -27,10 +27,7 @@ fn ray_color(ray: &Ray, scene: &Scene, depth: i32) -> Vec3 {
 		return Vec3::zero();
 	}
 	
-	// sky
-	let unit_dir = ray.dir.normalize();
-	let a = 0.5 * (unit_dir.y + 1.0);
-	Vec3::one() * (1.0-a) + Vec3::new(0.5, 0.7, 1.0) * a
+	scene.get_sky_color(ray.dir)
 }
 
 fn main() {
