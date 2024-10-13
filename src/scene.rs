@@ -1,6 +1,4 @@
-use crate::math::*;
-use crate::materials::*;
-use crate::shapes::{Sphere, Cube};
+use crate::{Sphere, Cube, Ray, AABB, Vec3, Material, random};
 
 pub trait Hittable {
 	fn hit(&self, ray: &Ray) -> Option<f64>;

@@ -1,4 +1,4 @@
-use crate::math::*;
+use crate::{Vec3, Ray, radians, random};
 
 pub struct Camera {
 	pub origin: Vec3,

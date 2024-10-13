@@ -1,9 +1,8 @@
 use std::cmp::Ordering;
-
 use crate::{Bounded, Object, Ray, RayHit, Renderable, Scene, AABB};
 
 #[derive(Debug)]
-pub enum BVHNode {
+enum BVHNode {
 	Branch {
 		left: Box<BVH>,
 		right: Box<BVH>,
@@ -87,15 +86,7 @@ impl BVH {
 			let is_distance_valid = |distance: f64| distance > 0.001;
 
 			match &self.tree {
-				BVHNode::FewObjects(scene) => /*object.hit(ray).and_then(|distance| {
-					if is_distance_valid(distance) {
-						Some((distance, object))
-					}
-					else {
-						None
-					}
-				})*/
-				scene.hit(ray),
+				BVHNode::FewObjects(scene) => scene.hit(ray),
 				BVHNode::Branch { left, right } => {
 					let left = left.hit(ray);
 					let right = right.hit(ray);

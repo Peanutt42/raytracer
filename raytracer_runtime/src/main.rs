@@ -1,41 +1,19 @@
 use rayon::prelude::*;
-use image::*;
 use minifb::MouseButton;
 use minifb::{Key, Window, WindowOptions};
 use std::time::Instant;
-use raytracer::{math::*, BVH};
-use raytracer::scene::*;
-use raytracer::camera::Camera;
+use raytracer::{render, BVH, Vec3, Camera, Scene};
 
-fn vec3_to_rgb(v: &Vec3) -> image::Rgb<u8> {
-	Rgb([(v.x * 255.0) as u8, (v.y * 255.0) as u8, (v.z * 255.0) as u8])
+fn vec3_to_rgb(v: &Vec3) -> [u8; 3] {
+	[
+		(v.x * 255.0) as u8,
+		(v.y * 255.0) as u8,
+		(v.z * 255.0) as u8
+	]
 }
 
 fn rgb_to_u32(r: u32, g: u32, b: u32) -> u32 {
 	(r << 16) | (g << 8) | b
-}
-
-fn linear_to_gamma(linear: f64) -> f64 {
-	linear.sqrt()
-}
-
-fn ray_color(ray: &Ray, bvh: &BVH, contribution: &mut Vec3, depth: i32, rand: &mut rand::prelude::ThreadRng) -> Vec3 {
-	if depth <= 0 {
-		return Vec3::zero();
-	}
-
-	if let Some(hit) = bvh.trace(ray) {
-		if let Some(scattered) = hit.material.scatter(ray, &hit, rand) {
-			*contribution = (*contribution) * scattered.attenuation;
-			scattered.attenuation * ray_color(&scattered.scattered, bvh, contribution, depth - 1, rand) + hit.material.emission_color()
-		}
-		else {
-			Vec3::zero()
-		}
-	}
-	else {
-		Scene::get_sky_color(ray.dir) * (*contribution)
-	}
 }
 
 fn get_camera_rotation(yaw: f64, pitch: f64) -> Vec3 {
@@ -49,14 +27,15 @@ fn get_camera_rotation(yaw: f64, pitch: f64) -> Vec3 {
 }
 
 fn main() {
-	let width = 800;//2560;
-	let height = 600;//1440;//(width * (16 / 9)) as usize;
+	let width = 300;//2560;
+	let height = 200;//1440;//(width * (16 / 9)) as usize;
 	let max_depth = 5;//50;
 
 	let mut accum_image: Vec<Vec3> = Vec::new();
 	accum_image.resize(width * height, Vec3::zero());
 	let mut frame_count = 1;
-	let mut final_image = image::RgbImage::new(width as u32, height as u32);
+	let mut final_image: Vec<Vec3> = Vec::new();
+	final_image.resize(width * height, Vec3::zero());
 
 	let mut window = Window::new("Raytracer - Runtime", width, height,
 	WindowOptions {
@@ -92,22 +71,23 @@ fn main() {
 			.for_each(|(y, row)| {
 				let mut rand = rand::thread_rng();
 				for (x, output_color) in row.iter_mut().enumerate() {
-					let ray = camera.get_ray(x as f64, y as f64, &mut rand);
-					let mut contribution = Vec3::one();
-					let mut final_color = ray_color(&ray, &bvh, &mut contribution, max_depth, &mut rand);
-					final_color = Vec3::new(linear_to_gamma(final_color.x), linear_to_gamma(final_color.y), linear_to_gamma(final_color.z));
-					*output_color = *output_color + final_color;
+					*output_color = *output_color + render(
+							x as f64,
+							y as f64,
+							&camera,
+							&bvh,
+							max_depth,
+							&mut rand
+						)
+						.linear_to_gamma();
 				}
 			});
 
 		for y in 0..height {
 			for x in 0..width {
 				let image_index = y * width + x;
-				final_image.put_pixel(x as u32, y as u32, vec3_to_rgb(&(accum_image[image_index] / (frame_count as f64))));
+				final_image[image_index] = accum_image[image_index] / (frame_count as f64);
 			}
-		}
-		for (index, pixel) in final_image.pixels_mut().enumerate() {
-			*pixel = vec3_to_rgb(&(accum_image[index] / (frame_count as f64)));
 		}
 		frame_count += 1;
 
@@ -159,10 +139,11 @@ fn main() {
 		last_mouse_pos = mouse_pos;
 
 		// Update the window
-		let mut buffer: Vec<u32> = vec![0; width * height];
-		for (i, pixel) in final_image.as_raw().chunks(3).enumerate() {
-			buffer[i] = rgb_to_u32(pixel[0] as u32, pixel[1] as u32, pixel[2] as u32)
-		}
+		let buffer: Vec<u32> = final_image.iter().map(|color| {
+			let rgb = vec3_to_rgb(color);
+			rgb_to_u32(rgb[0] as u32, rgb[1] as u32, rgb[2] as u32)
+		})
+		.collect();
 		window.update_with_buffer(&buffer, width, height).unwrap();
 	}
 }

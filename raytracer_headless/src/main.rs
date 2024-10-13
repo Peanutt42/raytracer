@@ -1,37 +1,10 @@
 use indicatif::ParallelProgressIterator;
-use rayon::prelude::*;
-use raytracer::BVH;
 use std::time::Instant;
-use raytracer::math::*;
-use raytracer::scene::*;
-use raytracer::camera::Camera;
-
+use rayon::prelude::*;
+use raytracer::{Vec3, BVH, Camera, Scene, render};
 
 fn vec3_to_rgb(v: &Vec3) -> image::Rgb<u8> {
 	image::Rgb([(v.x * 255.0) as u8, (v.y * 255.0) as u8, (v.z * 255.0) as u8])
-}
-
-fn linear_to_gamma(linear: f64) -> f64 {
-	linear.sqrt()
-}
-
-fn ray_color(ray: &Ray, bvh: &BVH, contribution: &mut Vec3, depth: i32, rand: &mut rand::prelude::ThreadRng) -> Vec3 {
-	if depth <= 0 {
-		return Vec3::zero();
-	}
-
-	if let Some(hit) = bvh.trace(ray) {
-		if let Some(scattered) = hit.material.scatter(ray, &hit, rand) {
-			*contribution = (*contribution) * scattered.attenuation;
-			scattered.attenuation * ray_color(&scattered.scattered, bvh, contribution, depth - 1, rand) + hit.material.emission_color()
-		}
-		else {
-			Vec3::zero()
-		}
-	}
-	else {
-		Scene::get_sky_color(ray.dir)
-	}
 }
 
 fn main() {
@@ -61,12 +34,16 @@ fn main() {
 			for (x, output_color) in row.iter_mut().enumerate() {
 				let mut final_color = Vec3::zero();
 				for _ in 0..samples {
-					let ray = camera.get_ray(x as f64, y as f64, &mut rand);
-					let mut contribution = Vec3::zero();
-					final_color = final_color + ray_color(&ray, &bvh, &mut contribution, max_depth, &mut rand);
+					final_color = final_color + render(
+						x as f64,
+						y as f64,
+						&camera,
+						&bvh,
+						max_depth,
+						&mut rand
+					);
 				}
-				final_color = final_color / samples as f64;
-				*output_color = Vec3::new(linear_to_gamma(final_color.x), linear_to_gamma(final_color.y), linear_to_gamma(final_color.z));
+				*output_color = final_color.linear_to_gamma() / samples as f64;
 			}
 		});
 

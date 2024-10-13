@@ -1,4 +1,4 @@
-pub mod cube;
+mod cube;
 pub use cube::Cube;
-pub mod sphere;
+mod sphere;
 pub use sphere::Sphere;

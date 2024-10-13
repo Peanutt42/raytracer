@@ -115,6 +115,14 @@ impl Vec3 {
 		self.z = new_z;
 	}
 
+	pub fn linear_to_gamma(&self) -> Self {
+		Vec3 {
+			x: self.x.sqrt(),
+			y: self.y.sqrt(),
+			z: self.z.sqrt()
+		}
+	}
+
 	pub fn random(min: f64, max: f64) -> Self {
 		Vec3 {
 			x: min + (max-min) * rand::random::<f64>(),

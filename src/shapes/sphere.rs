@@ -1,6 +1,4 @@
-use crate::math::*;
-use crate::materials::*;
-use crate::{Hittable, Bounded, Renderable};
+use crate::{Hittable, Bounded, Renderable, Vec3, Material, AABB, Ray};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Sphere {

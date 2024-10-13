@@ -1,6 +1,4 @@
-use crate::math::*;
-use crate::scene::RayHit;
-
+use crate::{RayHit, Vec3, Ray, random};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Material {
