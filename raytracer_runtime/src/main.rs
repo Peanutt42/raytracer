@@ -2,7 +2,7 @@ use rayon::prelude::*;
 use minifb::MouseButton;
 use minifb::{Key, Window, WindowOptions};
 use std::time::Instant;
-use raytracer::{render, BVH, Vec3, Camera, Scene};
+use raytracer::{render, Camera, Scalar, Scene, Vec3, BVH};
 
 fn vec3_to_rgb(v: &Vec3) -> [u8; 3] {
 	[
@@ -16,7 +16,7 @@ fn rgb_to_u32(r: u32, g: u32, b: u32) -> u32 {
 	(r << 16) | (g << 8) | b
 }
 
-fn get_camera_rotation(yaw: f64, pitch: f64) -> Vec3 {
+fn get_camera_rotation(yaw: Scalar, pitch: Scalar) -> Vec3 {
 	let pitch_radians = pitch.to_radians();
 	let yaw_radians = yaw.to_radians();
 	Vec3::new(
@@ -29,7 +29,7 @@ fn get_camera_rotation(yaw: f64, pitch: f64) -> Vec3 {
 fn main() {
 	let width = 300;//2560;
 	let height = 200;//1440;//(width * (16 / 9)) as usize;
-	let max_depth = 5;//50;
+	let max_depth = 10;//50;
 
 	let mut accum_image: Vec<Vec3> = Vec::new();
 	accum_image.resize(width * height, Vec3::zero());
@@ -57,12 +57,14 @@ fn main() {
 
 	let bvh = BVH::new(Scene::create_sample_scene()).unwrap();
 
-	let mut last_mouse_pos: (f32, f32) = window.get_mouse_pos(minifb::MouseMode::Clamp).unwrap();
+	let mut last_mouse_pos: (Scalar, Scalar) = window.get_mouse_pos(minifb::MouseMode::Clamp)
+		.map(|(x, y)| (x as Scalar, y as Scalar))
+		.unwrap();
 	let mut last_update = Instant::now();
 
 	while window.is_open() && !window.is_key_down(Key::Escape) {
 		let now = Instant::now();
-		let delta_time = (now - last_update).as_secs_f64();
+		let delta_time = (now - last_update).as_secs_f64() as Scalar;
 		last_update = now;
 
 		accum_image
@@ -72,8 +74,8 @@ fn main() {
 				let mut rand = rand::thread_rng();
 				for (x, output_color) in row.iter_mut().enumerate() {
 					*output_color = *output_color + render(
-							x as f64,
-							y as f64,
+							x as Scalar,
+							y as Scalar,
 							&camera,
 							&bvh,
 							max_depth,
@@ -86,20 +88,22 @@ fn main() {
 		for y in 0..height {
 			for x in 0..width {
 				let image_index = y * width + x;
-				final_image[image_index] = accum_image[image_index] / (frame_count as f64);
+				final_image[image_index] = accum_image[image_index] / (frame_count as Scalar);
 			}
 		}
 		frame_count += 1;
 
-		let mouse_pos = window.get_mouse_pos(minifb::MouseMode::Clamp).unwrap();
+		let mouse_pos = window.get_mouse_pos(minifb::MouseMode::Clamp)
+			.map(|(x, y)| (x as Scalar, y as Scalar))
+			.unwrap();
 
 		if window.get_mouse_down(MouseButton::Right) {
 			accum_image.resize(0, Vec3::zero());
 			accum_image.resize(width * height, Vec3::zero());
 
 			// camera rotation
-			yaw += (mouse_pos.0 - last_mouse_pos.0) as f64 * 0.25;
-			pitch += (last_mouse_pos.1 - mouse_pos.1) as f64 * 0.25;
+			yaw += (mouse_pos.0 - last_mouse_pos.0) * 0.25;
+			pitch += (last_mouse_pos.1 - mouse_pos.1) * 0.25;
 			pitch = pitch.clamp(-90.0, 90.0);
 			let direction = get_camera_rotation(yaw, pitch);
 

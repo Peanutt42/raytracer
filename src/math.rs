@@ -1,29 +1,31 @@
 use std::ops::{Add, Sub, Mul, Div, Neg, Index, IndexMut};
-
 use rand::Rng;
 
-pub fn radians(degrees: f64) -> f64 {
-	degrees * std::f64::consts::PI / 180.0
+pub type Scalar = f64;
+pub const PI: Scalar = std::f64::consts::PI;
+
+pub fn radians(degrees: Scalar) -> Scalar {
+	degrees * PI / 180.0
 }
 
-pub fn random(min: f64, max: f64, rand: &mut rand::prelude::ThreadRng) -> f64 {
-	min + (max - min) * rand.gen::<f64>()
+pub fn random(min: Scalar, max: Scalar, rand: &mut rand::prelude::ThreadRng) -> Scalar {
+	min + (max - min) * rand.gen::<Scalar>()
 }
 
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Vec3 {
-	pub x: f64,
-	pub y: f64,
-	pub z: f64
+	pub x: Scalar,
+	pub y: Scalar,
+	pub z: Scalar
 }
 
 impl Vec3 {
-	pub fn new(x: f64, y: f64, z: f64) -> Self {
+	pub fn new(x: Scalar, y: Scalar, z: Scalar) -> Self {
 		Vec3 { x, y, z }
 	}
 
-	pub fn uniform(v: f64) -> Self {
+	pub fn uniform(v: Scalar) -> Self {
 		Vec3 { x: v, y: v, z: v }
 	}
 
@@ -35,7 +37,7 @@ impl Vec3 {
 		Vec3 { x: 1.0, y: 1.0, z: 1.0 }
 	}
 
-	pub fn dot(&self, other: Self) -> f64 {
+	pub fn dot(&self, other: Self) -> Scalar {
 		self.x * other.x + self.y * other.y + self.z * other.z
 	}
 
@@ -47,11 +49,11 @@ impl Vec3 {
 		}
 	}
 
-	pub fn length_squared(&self) -> f64 {
+	pub fn length_squared(&self) -> Scalar {
 		self.x * self.x + self.y * self.y + self.z * self.z
 	}
 
-	pub fn length(&self) -> f64 {
+	pub fn length(&self) -> Scalar {
 		self.length_squared().sqrt()
 	}
 
@@ -76,14 +78,14 @@ impl Vec3 {
 		*self - (normal * 2.0 * self.dot(normal))
 	}
 
-	pub fn refract(uv: Vec3, n: Vec3, etai_over_etat: f64) -> Vec3 {
+	pub fn refract(uv: Vec3, n: Vec3, etai_over_etat: Scalar) -> Vec3 {
 		let cos_theta = (-uv).dot(n).min(1.0);
 		let r_out_perp = etai_over_etat * (uv + cos_theta * n);
 		let r_out_parallel = -((1.0 - r_out_perp.length_squared()).abs().sqrt()) * n;
 		r_out_perp + r_out_parallel
 	}
 
-	pub fn near_zero_tolerance(&self, tolerance: f64) -> bool {
+	pub fn near_zero_tolerance(&self, tolerance: Scalar) -> bool {
 		(self.x.abs() <= tolerance) && (self.y.abs() <= tolerance) && (self.z.abs() <= tolerance)
 	}
 
@@ -101,14 +103,14 @@ impl Vec3 {
 		}
 	}
 
-	pub fn rotate_x(&mut self, theta: f64) {
+	pub fn rotate_x(&mut self, theta: Scalar) {
 		let new_y = self.y * theta.cos() + self.z * theta.sin();
 		let new_z = -self.y * theta.sin() + self.z * theta.cos();
 		self.y = new_y;
 		self.z = new_z;
 	}
 
-	pub fn rotate_y(&mut self, theta: f64) {
+	pub fn rotate_y(&mut self, theta: Scalar) {
 		let new_x = self.x * theta.cos() + self.z * theta.sin();
 		let new_z = -self.x * theta.sin() + self.z * theta.cos();
 		self.x = new_x;
@@ -123,16 +125,16 @@ impl Vec3 {
 		}
 	}
 
-	pub fn random(min: f64, max: f64) -> Self {
+	pub fn random(min: Scalar, max: Scalar, rand: &mut rand::prelude::ThreadRng) -> Self {
 		Vec3 {
-			x: min + (max-min) * rand::random::<f64>(),
-			y: min + (max-min) * rand::random::<f64>(),
-			z: min + (max-min) * rand::random::<f64>()
+			x: min + (max-min) * rand.gen::<Scalar>(),
+			y: min + (max-min) * rand.gen::<Scalar>(),
+			z: min + (max-min) * rand.gen::<Scalar>()
 		}
 	}
 
-	pub fn random_unit_vector() -> Self {
-		let p = Self::random(-1.0, 1.0);
+	pub fn random_unit_vector(rand: &mut rand::prelude::ThreadRng) -> Self {
+		let p = Self::random(-1.0, 1.0, rand);
 		p.normalize()
 	}
 
@@ -166,10 +168,10 @@ impl Sub for Vec3 {
 	}
 }
 
-impl Mul<f64> for Vec3 {
+impl Mul<Scalar> for Vec3 {
 	type Output = Self;
 
-	fn mul(self, scalar: f64) -> Self {
+	fn mul(self, scalar: Scalar) -> Self {
 		Vec3 {
 			x: self.x * scalar,
 			y: self.y * scalar,
@@ -178,7 +180,7 @@ impl Mul<f64> for Vec3 {
 	}
 }
 
-impl Mul<Vec3> for f64 {
+impl Mul<Vec3> for Scalar {
 	type Output = Vec3;
 
 	fn mul(self, v: Vec3) -> Vec3 {
@@ -214,10 +216,10 @@ impl Div<Vec3> for Vec3 {
 	}
 }
 
-impl Div<f64> for Vec3 {
+impl Div<Scalar> for Vec3 {
 	type Output = Self;
 
-	fn div(self, scalar: f64) -> Self {
+	fn div(self, scalar: Scalar) -> Self {
 		Vec3 {
 			x: self.x / scalar,
 			y: self.y / scalar,
@@ -226,7 +228,7 @@ impl Div<f64> for Vec3 {
 	}
 }
 
-impl Div<Vec3> for f64 {
+impl Div<Vec3> for Scalar {
 	type Output = Vec3;
 
 	fn div(self, v: Vec3) -> Vec3 {
@@ -251,7 +253,7 @@ impl Neg for Vec3 {
 }
 
 impl Index<usize> for Vec3 {
-	type Output = f64;
+	type Output = Scalar;
 
 	fn index(&self, index: usize) -> &Self::Output {
 		match index {
@@ -264,7 +266,7 @@ impl Index<usize> for Vec3 {
 }
 
 impl IndexMut<usize> for Vec3 {
-	fn index_mut(&mut self, index: usize) -> &mut f64 {
+	fn index_mut(&mut self, index: usize) -> &mut Scalar {
 		match index {
 			0 => &mut self.x,
 			1 => &mut self.y,
@@ -289,7 +291,7 @@ impl Ray {
 		}
 	}
 
-	pub fn at(&self, t: f64) -> Vec3 {
+	pub fn at(&self, t: Scalar) -> Vec3 {
 		self.origin + self.dir * t
 	}
 }
@@ -320,7 +322,7 @@ impl AABB {
 				std::mem::swap(&mut t0, &mut t1);
 			}
 			let min = if t0 > 0.001 {t0} else {0.001};
-			let max = if t1 < f64::MAX {t1} else {f64::MAX};
+			let max = if t1 < Scalar::MAX {t1} else {Scalar::MAX};
 			if max <= min {
 				return false;
 			}
@@ -345,14 +347,14 @@ impl AABB {
 	pub fn surrounding(a: AABB, b: AABB) -> Self {
 		Self::new(
 			Vec3::new(
-				f64::min(a.min.x, b.min.x),
-				f64::min(a.min.y, b.min.y),
-				f64::min(a.min.z, b.min.z)
+				Scalar::min(a.min.x, b.min.x),
+				Scalar::min(a.min.y, b.min.y),
+				Scalar::min(a.min.z, b.min.z)
 			),
 			Vec3::new(
-				f64::max(a.max.x, b.max.x),
-				f64::max(a.max.y, b.max.y),
-				f64::max(a.max.z, b.max.z)
+				Scalar::max(a.max.x, b.max.x),
+				Scalar::max(a.max.y, b.max.y),
+				Scalar::max(a.max.z, b.max.z)
 			),
 		)
 	}

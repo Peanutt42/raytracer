@@ -1,4 +1,4 @@
-use crate::{Hittable, Bounded, Renderable, Vec3, Material, AABB, Ray};
+use crate::{Bounded, Hittable, Material, Ray, Renderable, Scalar, Vec3, AABB};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Cube {
@@ -23,7 +23,7 @@ impl Cube {
 }
 
 impl Hittable for Cube {
-	fn hit(&self, ray: &Ray) -> Option<f64> {
+	fn hit(&self, ray: &Ray) -> Option<Scalar> {
 		let origin = ray.origin - self.center;
 
 		let m = 1.0 / ray.dir;
@@ -33,8 +33,8 @@ impl Hittable for Cube {
 		let t1: Vec3 = -n - k;
 		let t2: Vec3 = -n + k;
 
-		let t_n: f64 = t1.x.max(t1.y).max(t1.z);
-		let t_f: f64 = t2.x.min(t2.y).min(t2.z);
+		let t_n: Scalar = t1.x.max(t1.y).max(t1.z);
+		let t_f: Scalar = t2.x.min(t2.y).min(t2.z);
 
 		if t_n > t_f || t_f <= 0. || t_n <= 0. {
 			None

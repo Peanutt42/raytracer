@@ -1,5 +1,5 @@
 mod math;
-pub use math::{radians, random, Ray, Vec3, AABB};
+pub use math::{radians, random, Ray, Vec3, AABB, Scalar};
 mod scene;
 pub use scene::{Scene, Object, RayHit, Hittable, Renderable, Bounded};
 mod bvh;

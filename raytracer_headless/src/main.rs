@@ -1,7 +1,7 @@
 use indicatif::ParallelProgressIterator;
 use std::time::Instant;
 use rayon::prelude::*;
-use raytracer::{Vec3, BVH, Camera, Scene, render};
+use raytracer::{render, Camera, Scalar, Scene, Vec3, BVH};
 
 fn vec3_to_rgb(v: &Vec3) -> image::Rgb<u8> {
 	image::Rgb([(v.x * 255.0) as u8, (v.y * 255.0) as u8, (v.z * 255.0) as u8])
@@ -35,15 +35,15 @@ fn main() {
 				let mut final_color = Vec3::zero();
 				for _ in 0..samples {
 					final_color = final_color + render(
-						x as f64,
-						y as f64,
+						x as Scalar,
+						y as Scalar,
 						&camera,
 						&bvh,
 						max_depth,
 						&mut rand
 					);
 				}
-				*output_color = final_color.linear_to_gamma() / samples as f64;
+				*output_color = final_color.linear_to_gamma() / samples as Scalar;
 			}
 		});
 

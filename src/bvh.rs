@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use crate::{Bounded, Object, Ray, RayHit, Renderable, Scene, AABB};
+use crate::{Bounded, Object, Ray, RayHit, Renderable, Scalar, Scene, AABB};
 
 #[derive(Debug)]
 enum BVHNode {
@@ -28,15 +28,15 @@ impl BVH {
 			}
 		}
 
-		fn axis_range(objects: &[Object], axis: usize) -> f64 {
-			let (min, max) = objects.iter().fold((f64::MAX, f64::MIN), |(bmin, bmax), hit| {
+		fn axis_range(objects: &[Object], axis: usize) -> Scalar {
+			let (min, max) = objects.iter().fold((Scalar::MAX, Scalar::MIN), |(bmin, bmax), hit| {
 				let aabb = hit.get_aabb();
 				(bmin.min(aabb.min[axis]), bmax.max(aabb.max[axis]))
 			});
 			max - min
 		}
 
-		let mut axis_ranges: [(usize, f64); 3] = [
+		let mut axis_ranges: [(usize, Scalar); 3] = [
 			(0, axis_range(&scene.objects, 0)),
 			(1, axis_range(&scene.objects, 1)),
 			(2, axis_range(&scene.objects, 2))
@@ -81,9 +81,9 @@ impl BVH {
 		}
 	}
 
-	fn hit(&self, ray: &Ray) -> Option<(f64, &Object)> {
+	fn hit(&self, ray: &Ray) -> Option<(Scalar, &Object)> {
 		if self.aabb.hit(ray) {
-			let is_distance_valid = |distance: f64| distance > 0.001;
+			let is_distance_valid = |distance: Scalar| distance > 0.001;
 
 			match &self.tree {
 				BVHNode::FewObjects(scene) => scene.hit(ray),

@@ -1,15 +1,15 @@
-use crate::{Hittable, Bounded, Renderable, Vec3, Material, AABB, Ray};
+use crate::{Bounded, Hittable, Material, Ray, Renderable, Scalar, Vec3, AABB};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Sphere {
 	pub center: Vec3,
 	pub material: Material,
-	radius: f64,
+	radius: Scalar,
 	aabb: AABB,
 }
 
 impl Sphere {
-	pub fn new(center: Vec3, radius: f64, material: Material) -> Self {
+	pub fn new(center: Vec3, radius: Scalar, material: Material) -> Self {
 		let radius_vec3 = Vec3::new(radius, radius, radius);
 
 		Sphere {
@@ -22,7 +22,7 @@ impl Sphere {
 }
 
 impl Hittable for Sphere {
-	fn hit(&self, ray: &Ray) -> Option<f64> {
+	fn hit(&self, ray: &Ray) -> Option<Scalar> {
 		// a = ray origin
 		// b = ray direction
 		// r = radius

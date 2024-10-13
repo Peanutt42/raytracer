@@ -1,10 +1,10 @@
-use crate::{RayHit, Vec3, Ray, random};
+use crate::{random, Ray, RayHit, Scalar, Vec3};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Material {
-	Lambertain { albedo: Vec3, emission: f64 },
-	Metal { albedo: Vec3, fuzz: f64 },
-	Dielectric { ir: f64 },
+	Lambertain { albedo: Vec3, emission: Scalar },
+	Metal { albedo: Vec3, fuzz: Scalar },
+	Dielectric { ir: Scalar },
 }
 
 pub struct Scattered {
@@ -16,7 +16,7 @@ impl Material {
 	pub fn scatter(&self, ray_in: &Ray, hit: &RayHit, rand: &mut rand::prelude::ThreadRng) -> Option<Scattered> {
 		match self {
 			Self::Lambertain { albedo, .. } => {
-				let mut scatter_direction = hit.normal + Vec3::random_unit_vector();
+				let mut scatter_direction = hit.normal + Vec3::random_unit_vector(rand);
 				if scatter_direction.near_zero() {
 					scatter_direction = hit.normal;
 				}
@@ -24,7 +24,7 @@ impl Material {
 			},
 			Self::Metal { albedo, fuzz } => {
 				let reflected = ray_in.dir.normalize().reflect(hit.normal);
-				let scattered_dir = reflected + *fuzz * Vec3::random_unit_vector();
+				let scattered_dir = reflected + *fuzz * Vec3::random_unit_vector(rand);
 				if scattered_dir.dot(hit.normal) <= 0.0 {
 					return None;
 				}
@@ -40,8 +40,8 @@ impl Material {
 					};
 
 				let unit_dir = ray_in.dir.normalize();
-				let cos_theta = f64::min((-unit_dir).dot(hit.normal), 1.0);
-				let sin_theta = f64::sqrt(1.0 - (cos_theta * cos_theta));
+				let cos_theta = Scalar::min((-unit_dir).dot(hit.normal), 1.0);
+				let sin_theta = Scalar::sqrt(1.0 - (cos_theta * cos_theta));
 
 				let cannot_refract = refration_ratio * sin_theta > 1.0;
 				let direction =
@@ -65,7 +65,7 @@ impl Material {
 	}
 
 
-	fn reflectance(cosine: f64, ref_idx: f64) -> f64 {
+	fn reflectance(cosine: Scalar, ref_idx: Scalar) -> Scalar {
 		// Use Schlick's approximation for reflectance.
 		let mut r0 = (1. - ref_idx) / (1. + ref_idx);
 		r0 = r0 * r0;
