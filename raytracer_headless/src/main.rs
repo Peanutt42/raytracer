@@ -1,10 +1,10 @@
 use indicatif::ParallelProgressIterator;
 use rayon::prelude::*;
+use raytracer::BVH;
 use std::time::Instant;
 use raytracer::math::*;
 use raytracer::scene::*;
 use raytracer::camera::Camera;
-use raytracer::materials::*;
 
 
 fn vec3_to_rgb(v: &Vec3) -> image::Rgb<u8> {
@@ -15,93 +15,39 @@ fn linear_to_gamma(linear: f64) -> f64 {
 	linear.sqrt()
 }
 
-fn ray_color(ray: &Ray, scene: &Scene, depth: i32) -> Vec3 {
+fn ray_color(ray: &Ray, bvh: &BVH, contribution: &mut Vec3, depth: i32, rand: &mut rand::prelude::ThreadRng) -> Vec3 {
 	if depth <= 0 {
 		return Vec3::zero();
 	}
-	
-	if let Some(hit) = scene.trace(ray) {
-		if let Some(scattered) = hit.material.scatter(ray, &hit) {
-			return scattered.attenuation * ray_color(&scattered.scattered, scene, depth - 1);
+
+	if let Some(hit) = bvh.trace(ray) {
+		if let Some(scattered) = hit.material.scatter(ray, &hit, rand) {
+			*contribution = (*contribution) * scattered.attenuation;
+			scattered.attenuation * ray_color(&scattered.scattered, bvh, contribution, depth - 1, rand) + hit.material.emission_color()
 		}
-		return Vec3::zero();
+		else {
+			Vec3::zero()
+		}
 	}
-	
-	scene.get_sky_color(ray.dir)
+	else {
+		Scene::get_sky_color(ray.dir)
+	}
 }
 
 fn main() {
 	let width = 2560;
 	let height = 1440;
-	let max_depth = 50;
-	let samples = 250;
+	let max_depth = 10;
+	let samples = 400;
 
 	let camera = Camera::new(
 		Vec3::new(13.0, 1.5, 3.0),
-		-Vec3::new(13.0, 1.5, 3.0).normalize(), 
+		-Vec3::new(13.0, 1.5, 3.0).normalize(),
 		20.0,
 		10.0, 0.6,
 		width, height);
-	
-	let mut scene = Scene::new();
 
-	let material_ground = Material::Lambertain{ albedo: Vec3::new(0.5, 0.5, 0.5) };
-	scene.add_cube(Vec3::new(0.0,-1000.0,0.0), Vec3::uniform(1000.0), material_ground);
-
-	let mut rand = rand::thread_rng();
-	
-	for a in -11..11 {
-		for b in -11..11 {
-			let random_mat = rand::random::<f64>();
-			let center = Vec3::new(a as f64 + 0.9 * rand::random::<f64>(), 0.2, b as f64 + 0.9 * rand::random::<f64>());
-
-			if (center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
-				if random_mat < 0.35 {
-					// diffuse
-					let albedo = Vec3::random(0.0, 1.0) * Vec3::random(0.0, 1.0);
-					let material = Material::Lambertain{ albedo };
-					if random(0.0, 1.0, &mut rand) > 0.5 {
-						scene.add_sphere(center, 0.2, material);
-					}
-					else {
-						scene.add_cube(center, Vec3::uniform(0.2), material);
-					}
-				} else if random_mat < 0.85 {
-					// metal
-					let albedo = Vec3::random(0.5, 1.0);
-					let fuzz = random(0.0, 0.3, &mut rand);
-					let material = Material::Metal{ albedo, fuzz };
-					if random(0.0, 1.0, &mut rand) > 0.5 {
-						scene.add_sphere(center, 0.2, material);
-					}
-					else {
-						scene.add_cube(center, Vec3::uniform(0.2), material);
-					}
-				} else {
-					// glass
-					let material = Material::Dielectric{ ir: 1.5 };
-					if random(0.0, 1.0, &mut rand) > 0.5 {
-						scene.add_sphere(center, 0.2, material);
-						scene.add_sphere(center, -0.19, material)
-					}
-					else {
-						scene.add_cube(center, Vec3::uniform(0.2), material);
-						scene.add_cube(center, Vec3::uniform(-0.19), material);
-					}
-				}
-			}
-		}
-	}
-	
-
-	let mat1 = Material::Dielectric{ ir: 1.5 };
-	let mat2 = Material::Lambertain{ albedo: Vec3::new(0.4, 0.2, 0.1) };
-	let mat3 = Material::Metal{ albedo: Vec3::new(0.7, 0.6, 0.5), fuzz: 0.0 };
-	scene.add_sphere(Vec3::new(0.0, 1.0, 0.0), 1.0, mat1);
-	scene.add_sphere(Vec3::new(0.0, 1.0, 0.0), -0.98, mat1);
-	scene.add_sphere(Vec3::new(4.0, 1.0, 0.0), 1.0, mat2);
-	scene.add_sphere(Vec3::new(-4.0, 1.0, 0.0), 1.0, mat3);
-	scene.add_cube(Vec3::new(-4.0, 0.5, 2.5), Vec3::uniform(0.8), mat2);
+	let bvh = BVH::new(Scene::create_sample_scene()).unwrap();
 
 	let render_start = Instant::now();
 
@@ -116,7 +62,8 @@ fn main() {
 				let mut final_color = Vec3::zero();
 				for _ in 0..samples {
 					let ray = camera.get_ray(x as f64, y as f64, &mut rand);
-					final_color = final_color + ray_color(&ray, &scene, max_depth);
+					let mut contribution = Vec3::zero();
+					final_color = final_color + ray_color(&ray, &bvh, &mut contribution, max_depth, &mut rand);
 				}
 				final_color = final_color / samples as f64;
 				*output_color = Vec3::new(linear_to_gamma(final_color.x), linear_to_gamma(final_color.y), linear_to_gamma(final_color.z));

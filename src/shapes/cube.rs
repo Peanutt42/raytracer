@@ -2,19 +2,24 @@ use crate::math::*;
 use crate::materials::*;
 use crate::scene::{Hittable, Bounded, Renderable};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Cube {
 	pub center: Vec3,
-	pub size: Vec3,
 	pub material: Material,
+	half_extend: Vec3,
+	aabb: AABB,
 }
 
 impl Cube {
-	pub fn new(center: Vec3, size: Vec3, material: Material) -> Self {
+	pub fn new(center: Vec3, half_extend: Vec3, material: Material) -> Self {
 		Cube {
 			center,
-			size,
+			half_extend,
 			material,
+			aabb: AABB::new(
+				center - half_extend,
+				center + half_extend
+			)
 		}
 	}
 }
@@ -25,7 +30,7 @@ impl Hittable for Cube {
 
 		let m = 1.0 / ray.dir;
 		let n: Vec3 = m * origin;
-		let k: Vec3 = m.abs() * self.size;
+		let k: Vec3 = m.abs() * self.half_extend;
 
 		let t1: Vec3 = -n - k;
 		let t2: Vec3 = -n + k;
@@ -43,8 +48,7 @@ impl Hittable for Cube {
 
 impl Bounded for Cube {
 	fn get_aabb(&self) -> AABB {
-		let half_extent = self.size / 2.0;
-		AABB::new(self.center - half_extent, self.center + half_extent)
+		self.aabb
 	}
 }
 

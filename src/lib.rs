@@ -2,6 +2,8 @@ pub mod math;
 pub use math::*;
 pub mod scene;
 pub use scene::*;
+pub mod bvh;
+pub use bvh::*;
 pub mod camera;
 pub use camera::*;
 pub mod materials;

@@ -288,7 +288,7 @@ impl Ray {
 
 
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct AABB {
 	pub min: Vec3,
 	pub max: Vec3,

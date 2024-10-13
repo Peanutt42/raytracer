@@ -2,19 +2,23 @@ use crate::math::*;
 use crate::materials::*;
 use crate::{Hittable, Bounded, Renderable};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Sphere {
 	pub center: Vec3,
-	pub radius: f64,
 	pub material: Material,
+	radius: f64,
+	aabb: AABB,
 }
 
 impl Sphere {
 	pub fn new(center: Vec3, radius: f64, material: Material) -> Self {
+		let radius_vec3 = Vec3::new(radius, radius, radius);
+
 		Sphere {
 			center,
 			radius,
-			material
+			material,
+			aabb: AABB::new(center - radius_vec3, center + radius_vec3),
 		}
 	}
 }
@@ -39,7 +43,7 @@ impl Hittable for Sphere {
 		if discriminant < 0.0 {
 			return None;
 		}
-		
+
 		// (-b +- sqrt(discriminant)) / 2a
 		Some((-b - discriminant.sqrt()) / (2.0 * a))
 	}
@@ -47,8 +51,7 @@ impl Hittable for Sphere {
 
 impl Bounded for Sphere {
 	fn get_aabb(&self) -> AABB {
-		let radius_vec3 = Vec3::new(self.radius, self.radius, self.radius);
-		AABB::new(self.center - radius_vec3, self.center + radius_vec3)
+		self.aabb
 	}
 }
 
