@@ -1,0 +1,11 @@
+[package]
+name = "raytracer_gpu"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+raytracer = { path = "../" }
+winit = "0.28.7"
+wgpu = "0.15"
+pollster = "0.3"
+bytemuck = { version = "1.21.0", features = ["derive"] }

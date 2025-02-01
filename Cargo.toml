@@ -10,7 +10,4 @@ image = "0.24.7"
 rayon = "1.8"
 
 [workspace]
-members = [
-	"raytracer_headless",
-	"raytracer_runtime",
-]
+members = ["raytracer_headless", "raytracer_runtime", "raytracer_gpu"]
