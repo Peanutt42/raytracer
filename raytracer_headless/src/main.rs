@@ -15,7 +15,7 @@ fn main() {
     let width = 2560;
     let height = 1440;
     let max_depth = 10;
-    let samples = 20;
+    let samples = 800;
 
     let camera = Camera::new(
         Vec3::new(13.0, 1.5, 3.0),
