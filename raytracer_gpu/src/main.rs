@@ -76,7 +76,11 @@ async fn run() {
 	let shader_code_changed_flag = Arc::new(AtomicBool::new(false));
 	let shader_code_changed_flag_clone = shader_code_changed_flag.clone();
 	let mut shader_code_file_watcher = notify::recommended_watcher(move |result| match result {
-		Ok(notify::Event { .. }) => shader_code_changed_flag_clone.store(true, Ordering::Relaxed),
+		Ok(notify::Event { kind, .. }) => {
+			if matches!(kind, notify::EventKind::Modify(_)) {
+				shader_code_changed_flag_clone.store(true, Ordering::Relaxed)
+			}
+		}
 		Err(e) => eprintln!("failed to listen to shader code file changes: {e}"),
 	})
 	.expect("failed to create shader code file watcher");
