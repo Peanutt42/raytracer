@@ -1,6 +1,15 @@
 use glam::Vec3;
+use notify::{RecursiveMode, Watcher};
 use raytracer_gpu::{Camera, Material, Renderer, Sphere};
-use std::{collections::HashSet, time::Instant};
+use std::{
+	collections::HashSet,
+	path::PathBuf,
+	sync::{
+		atomic::{AtomicBool, Ordering},
+		Arc,
+	},
+	time::Instant,
+};
 use winit::{
 	dpi::{LogicalSize, Size},
 	event::*,
@@ -64,6 +73,17 @@ async fn run() {
 
 	let mut pressed_key_codes = HashSet::<VirtualKeyCode>::new();
 
+	let shader_code_changed_flag = Arc::new(AtomicBool::new(false));
+	let shader_code_changed_flag_clone = shader_code_changed_flag.clone();
+	let mut shader_code_file_watcher = notify::recommended_watcher(move |result| match result {
+		Ok(notify::Event { .. }) => shader_code_changed_flag_clone.store(true, Ordering::Relaxed),
+		Err(e) => eprintln!("failed to listen to shader code file changes: {e}"),
+	})
+	.expect("failed to create shader code file watcher");
+	shader_code_file_watcher
+		.watch(&PathBuf::from("src/shaders"), RecursiveMode::Recursive)
+		.expect("failed to watch shader code files");
+
 	event_loop.run(move |event, _, control_flow| {
 		*control_flow = ControlFlow::Poll;
 
@@ -76,6 +96,19 @@ async fn run() {
 					renderer.frame_counter
 				);
 				last_redraw = Instant::now();
+
+				if shader_code_changed_flag.load(Ordering::Relaxed) {
+					println!("HOT RELOADING SHADERS...");
+					if let Err(e) = renderer.hot_reload_shaders_from_files(
+						"src/shaders/compute.wgsl",
+						"src/shaders/render.wgsl",
+					) {
+						eprintln!("COULD NOT HOT RELOAD SHADERS: {e}");
+					}
+					println!("HOT RELOADING SHADERS FINISHED!");
+
+					shader_code_changed_flag.store(false, Ordering::Relaxed);
+				}
 
 				camera_input_controller(&mut camera, &pressed_key_codes, delta_time.as_secs_f32());
 
