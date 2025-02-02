@@ -7,7 +7,7 @@ const CAMERA_UNIFORM_BIND_GROUP: u32 = 1;
 pub type CameraUniformBuffer = UniformBuffer<Camera, CAMERA_UNIFORM_BIND_GROUP>;
 
 #[repr(C)]
-#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable, PartialEq)]
 pub struct Camera {
 	pub position: Vec3,
 	_padding: f32,

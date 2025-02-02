@@ -24,35 +24,42 @@ async fn run() {
 
 	let spheres = vec![
 		Sphere {
-			position: [0.0, 1.0, -2.0],
+			position: Vec3::new(0.0, 1.0, -2.0),
 			emission: 0.5,
-			color: [1.0, 0.0, 0.0],
+			color: Vec3::new(1.0, 0.0, 0.0),
 			radius: 0.5,
 		},
 		Sphere {
-			position: [1.0, 0.5, -3.0],
+			position: Vec3::new(1.0, 0.5, -3.0),
 			emission: 0.0,
-			color: [0.75, 0.75, 0.75],
+			color: Vec3::new(0.75, 0.75, 0.75),
 			radius: 0.8,
 		},
 		Sphere {
-			position: [-1.0, -0.5, -4.0],
+			position: Vec3::new(-1.0, -0.5, -4.0),
 			emission: 0.0,
-			color: [0.75, 0.75, 0.75],
+			color: Vec3::new(0.75, 0.75, 0.75),
 			radius: 1.0,
 		},
 		Sphere {
-			position: [-1.0, 1.0, -4.0],
+			position: Vec3::new(-1.0, 1.0, -4.0),
 			emission: 0.0,
-			color: [0.75, 0.75, 0.75],
+			color: Vec3::new(0.75, 0.75, 0.75),
 			radius: 0.4,
 		},
 		// sun
 		Sphere {
-			position: [10000.0, 5000.0, 10000.0],
+			position: Vec3::new(10000.0, 5000.0, 10000.0),
 			emission: 60.0,
-			color: [0.8, 0.4, 0.2],
+			color: Vec3::new(0.8, 0.4, 0.2),
 			radius: 5000.0,
+		},
+		// ground
+		Sphere {
+			position: Vec3::new(0.0, -100002.0, 0.0),
+			emission: 0.0,
+			color: Vec3::new(0.5, 0.5, 0.5),
+			radius: 100000.0,
 		},
 	];
 
@@ -60,7 +67,6 @@ async fn run() {
 
 	let mut last_redraw = Instant::now();
 
-	// (scan_code, pressed_down)
 	let mut pressed_key_codes = HashSet::<VirtualKeyCode>::new();
 
 	event_loop.run(move |event, _, control_flow| {
@@ -102,6 +108,10 @@ async fn run() {
 			} => match input.state {
 				ElementState::Pressed => {
 					if let Some(virtual_key_codes) = input.virtual_keycode {
+						if matches!(virtual_key_codes, VirtualKeyCode::Escape) {
+							*control_flow = ControlFlow::ExitWithCode(0);
+						}
+
 						pressed_key_codes.insert(virtual_key_codes);
 					}
 				}

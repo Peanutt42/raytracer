@@ -1,3 +1,34 @@
+const PCG_MULTIPLIER: u32 = 747796405u;
+const PCG_INCREMENT: u32 = 2891336453u;
+const NOISE1: u32 = 2246822519u;
+const NOISE2: u32 = 3266489917u;
+const NOISE3: u32 = 668265263u;
+
+fn pcg_hash(seed: u32) -> u32 {
+    var state = seed;
+    // LCG step
+    state = state * PCG_MULTIPLIER + PCG_INCREMENT;
+    // XSH-RR permutation
+    state ^= state >> 17u;
+    state *= NOISE1;
+    state ^= state >> 15u;
+    state *= NOISE2;
+    state ^= state >> 16u;
+    return state;
+}
+
+// returns 0.0 .. 1.0
+fn random_f32(seed: ptr<function, u32>) -> f32 {
+    let r = pcg_hash(*seed);
+    *seed = r;
+    return f32(r) / f32(0xFFFFFFFFu);
+}
+
+fn random_f32_in_range(seed: ptr<function, u32>, min: f32, max: f32) -> f32 {
+	return min + (max - min) * random_f32(seed);
+}
+
+
 struct Camera {
 	position: vec3<f32>,
 }
@@ -82,9 +113,11 @@ fn ray_color(light: ptr<function, vec3<f32>>, contribution: ptr<function, vec3<f
 }
 
 @group(0) @binding(0) var<storage> spheres: array<Sphere>;
-@group(0) @binding(1) var output_image: texture_storage_2d<rgba8unorm, write>;
+@group(0) @binding(1) var output_image: texture_storage_2d<rgba32float, read_write>;
 
 @group(1) @binding(0) var<uniform> camera: Camera;
+
+@group(2) @binding(0) var<uniform> frame_counter: u32;
 
 @compute @workgroup_size(16, 16, 1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
@@ -104,17 +137,24 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     uv.x *= aspect_ratio;
 
+    var pcg_state = global_id.x * 256u + global_id.y * 16u + frame_counter;
+    let random_uv_offset_x = (random_f32_in_range(&pcg_state, -0.5, 0.5) / f32(texture_size.x)) * aspect_ratio;
+    let random_uv_offset_y = random_f32_in_range(&pcg_state, -0.5, 0.5) / f32(texture_size.y);
+
+    uv += vec2<f32>(random_uv_offset_x, random_uv_offset_y);
     var ray = Ray(camera.position, normalize(vec3<f32>(uv, -1.0)));
     var light = vec3<f32>(0.0);
     var contribution = vec3<f32>(1.0);
 
-    let max_depth = 3;
-
-    for (var i = 0; i < max_depth; i++) {
+    //				  max_depth: 3
+    for (var i = 0u; i < 3u; i++) {
     	if (!ray_color(&light, &contribution, &ray)) {
      		break;
        	}
     }
 
-    textureStore(output_image, vec2<i32>(global_id.xy), vec4<f32>(light, 1.0));
+    let texture_coord = vec2<i32>(global_id.xy);
+    let old_color: vec4<f32> = textureLoad(output_image, texture_coord);
+    let new_color = old_color + vec4<f32>(light, 1.0);
+    textureStore(output_image, texture_coord, new_color);
 }

@@ -1,5 +1,6 @@
 @group(0) @binding(0) var output_texture: texture_2d<f32>;
 @group(0) @binding(1) var output_sampler: sampler;
+@group(1) @binding(0) var<uniform> frame_counter: u32;
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
@@ -25,5 +26,7 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return textureSample(output_texture, output_sampler, in.uv);
+	let color = textureSample(output_texture, output_sampler, in.uv).xyz;
+	let frame_count: f32 = f32(frame_counter);
+    return vec4<f32>(color / frame_count, 1.0);
 }

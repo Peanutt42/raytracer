@@ -68,6 +68,14 @@ impl<T: Pod + Zeroable, const BG: u32> UniformBuffer<T, BG> {
 		computepass.set_bind_group(BG, &self.bind_group, &[]);
 	}
 
+	pub fn custom_bind_compute<'a>(
+		&'a self,
+		computepass: &'_ mut ComputePass<'a>,
+		bind_group: u32,
+	) {
+		computepass.set_bind_group(bind_group, &self.bind_group, &[]);
+	}
+
 	pub fn bind_render<'a>(&'a self, renderpass: &'_ mut RenderPass<'a>) {
 		renderpass.set_bind_group(BG, &self.bind_group, &[]);
 	}
