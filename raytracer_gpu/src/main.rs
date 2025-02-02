@@ -1,5 +1,5 @@
 use glam::Vec3;
-use raytracer_gpu::{Camera, Renderer, Sphere};
+use raytracer_gpu::{Camera, Material, Renderer, Sphere};
 use std::{collections::HashSet, time::Instant};
 use winit::{
 	dpi::{LogicalSize, Size},
@@ -22,46 +22,41 @@ async fn run() {
 
 	let mut camera = Camera::new(Vec3::new(0.0, 0.0, 0.0));
 
-	let spheres = vec![
-		Sphere {
-			position: Vec3::new(0.0, 1.0, -2.0),
-			emission: 0.5,
-			color: Vec3::new(1.0, 0.0, 0.0),
-			radius: 0.5,
-		},
-		Sphere {
-			position: Vec3::new(1.0, 0.5, -3.0),
-			emission: 0.0,
-			color: Vec3::new(0.75, 0.75, 0.75),
-			radius: 0.8,
-		},
-		Sphere {
-			position: Vec3::new(-1.0, -0.5, -4.0),
-			emission: 0.0,
-			color: Vec3::new(0.75, 0.75, 0.75),
-			radius: 1.0,
-		},
-		Sphere {
-			position: Vec3::new(-1.0, 1.0, -4.0),
-			emission: 0.0,
-			color: Vec3::new(0.75, 0.75, 0.75),
-			radius: 0.4,
-		},
+	let mut spheres = vec![
+		// glowing red
+		Sphere::new(
+			Vec3::new(0.0, 1.0, -2.0),
+			1.5,
+			Vec3::new(1.0, 0.0, 0.0),
+			Material::Lambertain { emission: 0.5 },
+		),
 		// sun
-		Sphere {
-			position: Vec3::new(10000.0, 5000.0, 10000.0),
-			emission: 60.0,
-			color: Vec3::new(0.8, 0.4, 0.2),
-			radius: 5000.0,
-		},
+		Sphere::new(
+			Vec3::new(10000.0, 10000.0, 10000.0),
+			2500.0,
+			Vec3::new(0.8, 0.4, 0.2),
+			Material::Lambertain { emission: 30.0 },
+		),
 		// ground
-		Sphere {
-			position: Vec3::new(0.0, -100002.0, 0.0),
-			emission: 0.0,
-			color: Vec3::new(0.5, 0.5, 0.5),
-			radius: 100000.0,
-		},
+		Sphere::new(
+			Vec3::new(0.0, -100002.0, 0.0),
+			100000.0,
+			Vec3::new(0.5, 0.5, 0.5),
+			Material::Lambertain { emission: 0.0 },
+		),
 	];
+
+	// different metalic spheres
+	for i in 0..10 {
+		spheres.push(Sphere::new(
+			Vec3::new(i as f32 - 5.0, -1.0, -3.0),
+			0.5,
+			Vec3::new(0.75, 0.75, 0.75),
+			Material::Metalic {
+				fuzz: i as f32 / 10.0,
+			},
+		));
+	}
 
 	let mut renderer = Renderer::new(&window, &spheres, camera).await;
 
@@ -76,8 +71,9 @@ async fn run() {
 			Event::RedrawRequested(_) => {
 				let delta_time = Instant::now() - last_redraw;
 				println!(
-					"FPS = {:.0}, {delta_time:?}",
-					1.0 / delta_time.as_secs_f64()
+					"FPS = {:.0} ({delta_time:?}), FRAME = {}",
+					1.0 / delta_time.as_secs_f64(),
+					renderer.frame_counter
 				);
 				last_redraw = Instant::now();
 

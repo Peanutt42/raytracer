@@ -6,9 +6,7 @@ const NOISE3: u32 = 668265263u;
 
 fn pcg_hash(seed: u32) -> u32 {
     var state = seed;
-    // LCG step
     state = state * PCG_MULTIPLIER + PCG_INCREMENT;
-    // XSH-RR permutation
     state ^= state >> 17u;
     state *= NOISE1;
     state ^= state >> 15u;
@@ -28,16 +26,40 @@ fn random_f32_in_range(seed: ptr<function, u32>, min: f32, max: f32) -> f32 {
 	return min + (max - min) * random_f32(seed);
 }
 
+// already normalized
+fn random_unit_vec3(seed: ptr<function, u32>) -> vec3<f32> {
+	let x = random_f32_in_range(seed, -1.0, 1.0);
+	let y = random_f32_in_range(seed, -1.0, 1.0);
+	let z = random_f32_in_range(seed, -1.0, 1.0);
+	return normalize(vec3<f32>(x, y, z));
+}
+
 
 struct Camera {
 	position: vec3<f32>,
 }
 
+struct Ray {
+	origin: vec3<f32>,
+	dir: vec3<f32>,
+}
+
+struct RayHit {
+	point: vec3<f32>,
+	normal: vec3<f32>,
+}
+
+struct Scattered {
+	dir: vec3<f32>,
+	attenuation: vec3<f32>,
+}
+
 struct Sphere {
     position: vec3<f32>,
-    emission: f32,
-    color: vec3<f32>,
     radius: f32,
+    albedo: vec3<f32>,
+    material_type: u32,
+    material_param1: f32,
 }
 
 fn sphere_get_normal(sphere: Sphere, point: vec3<f32>) -> vec3<f32> {
@@ -45,13 +67,34 @@ fn sphere_get_normal(sphere: Sphere, point: vec3<f32>) -> vec3<f32> {
 }
 
 fn sphere_emission(sphere: Sphere) -> vec3<f32> {
-	return sphere.color * sphere.emission;
+	switch sphere.material_type {
+		// LAMBERTAIN_MATERIAL_TYPE
+		case 0u: {
+			let emission = sphere.material_param1;
+			return sphere.albedo * emission;
+		}
+		case default: {
+			return vec3<f32>(0.0);
+		}
+	}
 }
 
-struct Ray {
-	origin: vec3<f32>,
-	dir: vec3<f32>,
+fn sphere_scatter(sphere: Sphere, ray_in: Ray, ray_hit: RayHit, seed: ptr<function, u32>) -> Scattered {
+	switch sphere.material_type {
+		// LAMBERTAIN_MATERIAL_TYPE
+		case 0u, default: {
+			let dir = ray_hit.normal + random_unit_vec3(seed);
+			return Scattered(dir, sphere.albedo);
+		}
+		// METALIC_MATERIAL_TYPE
+		case 1u: {
+			let fuzz = sphere.material_param1;
+			let dir = reflect(ray_in.dir, ray_hit.normal) + fuzz * random_unit_vec3(seed);
+			return Scattered(dir, sphere.albedo);
+		}
+	}
 }
+
 
 // returns 1e5 if not hit
 fn ray_sphere_distance(ray: Ray, sphere: Sphere) -> f32 {
@@ -84,9 +127,9 @@ fn sky_color(ray: Ray) -> vec3<f32> {
 }
 
 // returns wheter to continue tracing the ray (returns false when sky was hit)
-fn ray_color(light: ptr<function, vec3<f32>>, contribution: ptr<function, vec3<f32>>, ray: ptr<function, Ray>) -> bool {
+fn ray_color(light: ptr<function, vec3<f32>>, contribution: ptr<function, vec3<f32>>, ray: ptr<function, Ray>, seed: ptr<function, u32>) -> bool {
 	var closest_distance = f32(1e5);
-	var closest_sphere = Sphere(vec3<f32>(0.0), 0.0, vec3<f32>(0.0), 0.0);
+	var closest_sphere = Sphere(vec3<f32>(0.0), 0.0, vec3<f32>(0.0), 0u, 0.0);
 
 	for (var i = 0u; i < arrayLength(&spheres); i++) {
 	    let sphere = spheres[i];
@@ -105,10 +148,13 @@ fn ray_color(light: ptr<function, vec3<f32>>, contribution: ptr<function, vec3<f
 
 	let hit_point = get_ray_point(*ray, closest_distance);
 	let normal = sphere_get_normal(closest_sphere, hit_point);
-	*contribution *= closest_sphere.color;
+	let ray_hit = RayHit(hit_point, normal);
+
+	let scattered = sphere_scatter(closest_sphere, *ray, ray_hit, seed);
+
+	*contribution *= scattered.attenuation;
 	*light += sphere_emission(closest_sphere);
-	let reflection_dir = reflect((*ray).dir, normal);
-	*ray = Ray(hit_point, reflection_dir);
+	*ray = Ray(hit_point, scattered.dir);
 	return true;
 }
 
@@ -120,7 +166,7 @@ fn ray_color(light: ptr<function, vec3<f32>>, contribution: ptr<function, vec3<f
 @group(2) @binding(0) var<uniform> frame_counter: u32;
 
 @compute @workgroup_size(16, 16, 1)
-fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>, @builtin(workgroup_id) workgroup_id: vec3<u32>) {
     let texture_size = textureDimensions(output_image);
 
     let x = i32(global_id.x);
@@ -137,7 +183,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     uv.x *= aspect_ratio;
 
-    var pcg_state = global_id.x * 256u + global_id.y * 16u + frame_counter;
+    var pcg_state = frame_counter;
+
     let random_uv_offset_x = (random_f32_in_range(&pcg_state, -0.5, 0.5) / f32(texture_size.x)) * aspect_ratio;
     let random_uv_offset_y = random_f32_in_range(&pcg_state, -0.5, 0.5) / f32(texture_size.y);
 
@@ -146,9 +193,9 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var light = vec3<f32>(0.0);
     var contribution = vec3<f32>(1.0);
 
-    //				  max_depth: 3
-    for (var i = 0u; i < 3u; i++) {
-    	if (!ray_color(&light, &contribution, &ray)) {
+    //				  max_depth: 5
+    for (var i = 0u; i < 5u; i++) {
+    	if (!ray_color(&light, &contribution, &ray, &pcg_state)) {
      		break;
        	}
     }

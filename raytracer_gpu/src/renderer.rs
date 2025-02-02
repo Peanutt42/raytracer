@@ -24,7 +24,7 @@ pub struct Renderer {
 	camera: Camera,
 	camera_uniform_buffer: CameraUniformBuffer,
 
-	frame_counter: u32,
+	pub frame_counter: u32,
 	frame_counter_uniform_buffer: UniformBuffer<u32, FRAME_COUNTER_UNIFORM_BUFFER_BIND_GROUP>,
 
 	compute_pipeline: ComputePipeline,
