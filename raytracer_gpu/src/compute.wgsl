@@ -1,3 +1,7 @@
+struct Camera {
+	position: vec3<f32>,
+}
+
 struct Sphere {
     position: vec3<f32>,
     emission: f32,
@@ -80,6 +84,8 @@ fn ray_color(light: ptr<function, vec3<f32>>, contribution: ptr<function, vec3<f
 @group(0) @binding(0) var<storage> spheres: array<Sphere>;
 @group(0) @binding(1) var output_image: texture_storage_2d<rgba8unorm, write>;
 
+@group(1) @binding(0) var<uniform> camera: Camera;
+
 @compute @workgroup_size(16, 16, 1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let texture_size = textureDimensions(output_image);
@@ -98,11 +104,11 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     uv.x *= aspect_ratio;
 
-    var ray = Ray(vec3<f32>(0.0), normalize(vec3<f32>(uv, -1.0)));
+    var ray = Ray(camera.position, normalize(vec3<f32>(uv, -1.0)));
     var light = vec3<f32>(0.0);
     var contribution = vec3<f32>(1.0);
 
-    let max_depth = 5;
+    let max_depth = 3;
 
     for (var i = 0; i < max_depth; i++) {
     	if (!ray_color(&light, &contribution, &ray)) {
