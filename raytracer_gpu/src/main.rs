@@ -11,6 +11,8 @@ use winit::{
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct Sphere {
     position: [f32; 3],
+    emission: f32,
+    color: [f32; 3],
     radius: f32,
 }
 
@@ -57,20 +59,35 @@ async fn run() {
 
     let spheres = vec![
         Sphere {
-            position: [0.0, 0.0, -2.0],
+            position: [0.0, 1.0, -2.0],
+            emission: 0.5,
+            color: [1.0, 0.0, 0.0],
             radius: 0.5,
         },
         Sphere {
-            position: [1.0, 0.0, -3.0],
+            position: [1.0, 0.5, -3.0],
+            emission: 0.0,
+            color: [0.75, 0.75, 0.75],
             radius: 0.8,
         },
         Sphere {
             position: [-1.0, -0.5, -4.0],
+            emission: 0.0,
+            color: [0.75, 0.75, 0.75],
             radius: 1.0,
         },
         Sphere {
             position: [-1.0, 1.0, -4.0],
+            emission: 0.0,
+            color: [0.75, 0.75, 0.75],
             radius: 0.4,
+        },
+        // sun
+        Sphere {
+            position: [10000.0, 5000.0, 10000.0],
+            emission: 60.0,
+            color: [0.8, 0.4, 0.2],
+            radius: 5000.0,
         },
     ];
 
