@@ -1,6 +1,6 @@
 use glam::Vec3;
 use notify::{RecursiveMode, Watcher};
-use raytracer_gpu::{Camera, Material, Renderer, Sphere};
+use raytracer_gpu::{create_sample_scene, Camera, Renderer};
 use std::{
 	collections::HashSet,
 	path::PathBuf,
@@ -31,41 +31,7 @@ async fn run() {
 
 	let mut camera = Camera::new(Vec3::new(0.0, 0.0, 0.0));
 
-	let mut spheres = vec![
-		// glowing red
-		Sphere::new(
-			Vec3::new(0.0, 1.0, -2.0),
-			1.5,
-			Vec3::new(1.0, 0.0, 0.0),
-			Material::Lambertain { emission: 0.5 },
-		),
-		// sun
-		Sphere::new(
-			Vec3::new(10000.0, 10000.0, 10000.0),
-			2500.0,
-			Vec3::new(0.8, 0.4, 0.2),
-			Material::Lambertain { emission: 30.0 },
-		),
-		// ground
-		Sphere::new(
-			Vec3::new(0.0, -100002.0, 0.0),
-			100000.0,
-			Vec3::new(0.5, 0.5, 0.5),
-			Material::Lambertain { emission: 0.0 },
-		),
-	];
-
-	// different metalic spheres
-	for i in 0..10 {
-		spheres.push(Sphere::new(
-			Vec3::new(i as f32 - 5.0, -1.0, -3.0),
-			0.5,
-			Vec3::new(0.75, 0.75, 0.75),
-			Material::Metalic {
-				fuzz: i as f32 / 10.0,
-			},
-		));
-	}
+	let spheres = create_sample_scene(); // create_10_metalics_scene();
 
 	let mut renderer = Renderer::new(&window, &spheres, camera).await;
 

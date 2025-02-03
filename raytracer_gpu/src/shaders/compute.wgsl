@@ -193,8 +193,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>, @builtin(workgroup_
     var light = vec3<f32>(0.0);
     var contribution = vec3<f32>(1.0);
 
-    //				  max_depth: 5
-    for (var i = 0u; i < 5u; i++) {
+    //				  max_depth: 3
+    for (var i = 0u; i < 3u; i++) {
     	if (!ray_color(&light, &contribution, &ray, &pcg_state)) {
      		break;
        	}
