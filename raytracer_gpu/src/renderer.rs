@@ -1,9 +1,5 @@
 use std::{borrow::Cow, path::Path};
-use wgpu::{
-	util::DeviceExt, Adapter, BindGroup, BindGroupLayout, Buffer, CommandEncoder, ComputePipeline,
-	Device, Features, Instance, Limits, Queue, RenderPipeline, Sampler, ShaderStages, Surface,
-	SurfaceConfiguration, Texture, TextureView, TextureViewDescriptor,
-};
+use wgpu::{util::DeviceExt, Adapter, BindGroup, BindGroupLayout, Buffer, CommandEncoder, ComputePipeline, Device, ErrorFilter, Features, Instance, Limits, Queue, RenderPipeline, Sampler, ShaderModule, ShaderStages, Surface, SurfaceConfiguration, Texture, TextureView, TextureViewDescriptor};
 use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::{Camera, CameraUniformBuffer, Sphere, UniformBuffer, SPHERE_BUFFER_BIND_GROUP};
@@ -186,7 +182,7 @@ impl Renderer {
 			&compute_bind_group_layout,
 			&camera_uniform_buffer,
 			&frame_counter_uniform_buffer,
-		);
+		).expect("failed to compile compute shader");
 
 		let render_pipeline = Self::create_render_pipeline(
 			Cow::Borrowed(include_str!("shaders/render.wgsl")),
@@ -194,7 +190,7 @@ impl Renderer {
 			&render_bind_group_layout,
 			&frame_counter_uniform_buffer,
 			&config,
-		);
+		).expect("failed to compile render shader");
 
 		Self {
 			instance,
@@ -222,17 +218,36 @@ impl Renderer {
 		}
 	}
 
+	fn create_shader_module(device: &Device, shader_code: Cow<'static, str>, label: Option<&'static str>) -> Result<ShaderModule, String> {
+		device.push_error_scope(ErrorFilter::Validation);
+
+		let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+			label,
+			source: wgpu::ShaderSource::Wgsl(shader_code),
+		});
+
+		if let Some(e) = pollster::block_on(device.pop_error_scope()) {
+			return Err( match e {
+				wgpu::Error::OutOfMemory { source } => format!("Out of Memory: {source}"),
+				wgpu::Error::Validation { description, ..} => format!("Failed to compile shader:\n{description}"),
+			});
+		}
+
+		Ok(shader)
+	}
+
 	fn create_compute_pipeline(
 		shader_code: Cow<'static, str>,
 		device: &Device,
 		compute_bind_group_layout: &BindGroupLayout,
 		camera_uniform_buffer: &CameraUniformBuffer,
 		frame_counter_uniform_buffer: &UniformBuffer<u32, FRAME_COUNTER_UNIFORM_BUFFER_BIND_GROUP>,
-	) -> ComputePipeline {
-		let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-			label: Some("Raytrace Compute Shader Module"),
-			source: wgpu::ShaderSource::Wgsl(shader_code),
-		});
+	) -> Result<ComputePipeline, String> {
+		let shader = Self::create_shader_module(
+			device,
+			shader_code,
+			Some("Raytrace Compute Shader Module"),
+		)?;
 
 		let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
 			label: Some("Raytrace Compute Pipeline Layout"),
@@ -244,12 +259,13 @@ impl Renderer {
 			push_constant_ranges: &[],
 		});
 
-		device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+		let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
 			label: Some("Raytrace Compute Pipeline"),
 			layout: Some(&pipeline_layout),
 			module: &shader,
 			entry_point: "main",
-		})
+		});
+		Ok(pipeline)
 	}
 
 	fn create_render_pipeline(
@@ -258,11 +274,12 @@ impl Renderer {
 		render_bind_group_layout: &BindGroupLayout,
 		frame_counter_uniform_buffer: &UniformBuffer<u32, FRAME_COUNTER_UNIFORM_BUFFER_BIND_GROUP>,
 		config: &SurfaceConfiguration,
-	) -> RenderPipeline {
-		let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-			label: None,
-			source: wgpu::ShaderSource::Wgsl(shader_code),
-		});
+	) -> Result<RenderPipeline, String> {
+		let shader = Self::create_shader_module(
+			device,
+			shader_code,
+			None,
+		)?;
 
 		let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
 			label: None,
@@ -273,7 +290,7 @@ impl Renderer {
 			push_constant_ranges: &[],
 		});
 
-		device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+		let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
 			label: None,
 			layout: Some(&pipeline_layout),
 			vertex: wgpu::VertexState {
@@ -290,7 +307,8 @@ impl Renderer {
 			depth_stencil: None,
 			multisample: wgpu::MultisampleState::default(),
 			multiview: None,
-		})
+		});
+		Ok(pipeline)
 	}
 
 	fn create_compute_texture(
@@ -455,8 +473,7 @@ impl Renderer {
 		self.hot_reload_shaders(
 			Cow::Owned(compute_shader_code),
 			Cow::Owned(render_shader_code),
-		);
-		Ok(())
+		)
 	}
 
 	/// hot reloading also resets accumulation!
@@ -464,24 +481,27 @@ impl Renderer {
 		&mut self,
 		compute_shader_code: Cow<'static, str>,
 		render_shader_code: Cow<'static, str>,
-	) {
-		self.compute_pipeline = Self::create_compute_pipeline(
+	) -> Result<(), String> {
+		let compute_pipeline = Self::create_compute_pipeline(
 			compute_shader_code,
 			&self.device,
 			&self.compute_bind_group_layout,
 			&self.camera_uniform_buffer,
 			&self.frame_counter_uniform_buffer,
-		);
+		)?;
 
-		self.render_pipeline = Self::create_render_pipeline(
+		let render_pipeline = Self::create_render_pipeline(
 			render_shader_code,
 			&self.device,
 			&self.render_bind_group_layout,
 			&self.frame_counter_uniform_buffer,
 			&self.config,
-		);
+		)?;
 
+		self.compute_pipeline = compute_pipeline;
+		self.render_pipeline = render_pipeline;
 		self.reset_accumulation();
+		Ok(())
 	}
 
 	/// should get called when camera or any objects move

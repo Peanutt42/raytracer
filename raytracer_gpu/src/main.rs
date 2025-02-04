@@ -31,7 +31,7 @@ async fn run() {
 
 	let mut camera = Camera::new(Vec3::new(0.0, 0.0, 0.0), -90.0, 0.0, 90.0, 0.1, 1000.0);
 
-	// also see: create_sample_scene, create_10_metalics_scene
+	// also see: create_simple_scene, create_sample_scene, create_10_metallic_scene
 	let spheres = create_simple_scene();
 
 	let mut renderer = Renderer::new(&window, &spheres, camera).await;
@@ -65,22 +65,22 @@ async fn run() {
 		match event {
 			Event::RedrawRequested(_) => {
 				let delta_time = Instant::now() - last_redraw;
-				println!(
-					"FPS = {:.0} ({delta_time:?}), FRAME = {}",
+				window.set_title(format!(
+					"{:.0} fps ({delta_time:.2?}) frame: {}",
 					1.0 / delta_time.as_secs_f64(),
 					renderer.frame_counter
-				);
+				).as_str());
 				last_redraw = Instant::now();
 
 				if shader_code_changed_flag.load(Ordering::Relaxed) {
 					println!("HOT RELOADING SHADERS...");
-					if let Err(e) = renderer.hot_reload_shaders_from_files(
+					match renderer.hot_reload_shaders_from_files(
 						"src/shaders/compute.wgsl",
 						"src/shaders/render.wgsl",
 					) {
-						eprintln!("COULD NOT HOT RELOAD SHADERS: {e}");
+						Ok(_) => println!("HOT RELOADING SHADERS FINISHED!"),
+						Err(e) => eprintln!("COULD NOT HOT RELOAD SHADERS:\n{e}"),
 					}
-					println!("HOT RELOADING SHADERS FINISHED!");
 
 					shader_code_changed_flag.store(false, Ordering::Relaxed);
 				}
@@ -172,9 +172,7 @@ fn camera_input_controller(
 	shift_down: bool,
 	dt: f32,
 ) {
-	if !pressed_mouse_buttons.contains(&MouseButton::Left)
-		&& !pressed_mouse_buttons.contains(&MouseButton::Right)
-	{
+	if !pressed_mouse_buttons.contains(&MouseButton::Right) {
 		*mouse_delta = (0.0, 0.0);
 		return;
 	}

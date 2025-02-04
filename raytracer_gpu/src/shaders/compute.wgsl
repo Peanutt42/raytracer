@@ -47,7 +47,7 @@ struct Ray {
 }
 
 struct RayHit {
-	point: vec3<f32>,
+	hit_point: vec3<f32>,
 	normal: vec3<f32>,
 }
 
@@ -64,12 +64,12 @@ struct Sphere {
     material_param1: f32,
 }
 
-fn sphere_get_normal(sphere: Sphere, point: vec3<f32>) -> vec3<f32> {
-	return (point - sphere.position) / sphere.radius;
+fn sphere_get_normal(sphere: Sphere, hit_point: vec3<f32>) -> vec3<f32> {
+	return (hit_point - sphere.position) / sphere.radius;
 }
 
 fn sphere_emission(sphere: Sphere) -> vec3<f32> {
-	switch sphere.material_type {
+	switch (sphere.material_type) {
 		// LAMBERTAIN_MATERIAL_TYPE
 		case 0u: {
 			let emission = sphere.material_param1;
@@ -82,7 +82,7 @@ fn sphere_emission(sphere: Sphere) -> vec3<f32> {
 }
 
 fn sphere_scatter(sphere: Sphere, ray_in: Ray, ray_hit: RayHit, seed: ptr<function, u32>) -> Scattered {
-	switch sphere.material_type {
+	switch (sphere.material_type) {
 		// LAMBERTAIN_MATERIAL_TYPE
 		case 0u, default: {
 			let dir = ray_hit.normal + random_unit_vec3(seed);
@@ -175,6 +175,7 @@ fn ray_dir(global_id: vec3<u32>, texture_size: vec2<i32>, pcg_state: ptr<functio
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>, @builtin(workgroup_id) workgroup_id: vec3<u32>) {
     let texture_size: vec2<i32> = textureDimensions(output_image);
 
+    // var pcg_state = global_id.x * u32(texture_size.x) + global_id.y + frame_counter * u32(texture_size.x * texture_size.y);
     var pcg_state = frame_counter;
 
     let x = i32(global_id.x);

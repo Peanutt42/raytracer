@@ -12,7 +12,7 @@ pub use renderer::Renderer;
 
 mod sphere;
 pub use sphere::{
-	create_10_metalics_scene, create_sample_scene, create_simple_scene, Material, Sphere,
+	create_10_metallic_scene, create_sample_scene, create_simple_scene, Material, Sphere,
 	SPHERE_BUFFER_BIND_GROUP,
 };
 

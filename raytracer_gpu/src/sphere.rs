@@ -103,7 +103,7 @@ pub fn create_simple_scene() -> Vec<Sphere> {
 }
 
 #[allow(unused)]
-pub fn create_10_metalics_scene() -> Vec<Sphere> {
+pub fn create_10_metallic_scene() -> Vec<Sphere> {
 	let mut spheres = vec![
 		// glowing red
 		Sphere::new(
