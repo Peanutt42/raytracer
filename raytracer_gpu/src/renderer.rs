@@ -410,6 +410,12 @@ impl Renderer {
 			&self.sampler,
 		);
 
+		self.camera_uniform_buffer.update(
+			self.camera
+				.get_uniform(self.config.width as f32, self.config.height as f32),
+			&self.queue,
+		);
+
 		self.reset_accumulation();
 	}
 
