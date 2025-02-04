@@ -86,7 +86,7 @@ impl Renderer {
 
 		let camera_uniform_buffer = CameraUniformBuffer::new(
 			Some("Camera Uniform"),
-			camera,
+			camera.get_uniform(config.width as f32, config.height as f32),
 			ShaderStages::COMPUTE,
 			&device,
 		);
@@ -419,7 +419,6 @@ impl Renderer {
 			.texture
 			.create_view(&wgpu::TextureViewDescriptor::default());
 
-		self.camera_uniform_buffer.update(self.camera, &self.queue);
 		self.frame_counter_uniform_buffer
 			.update(self.frame_counter, &self.queue);
 
@@ -498,6 +497,11 @@ impl Renderer {
 	pub fn update_camera(&mut self, new_camera: Camera) {
 		if self.camera != new_camera {
 			self.camera = new_camera;
+			self.camera_uniform_buffer.update(
+				self.camera
+					.get_uniform(self.config.width as f32, self.config.height as f32),
+				&self.queue,
+			);
 			self.reset_accumulation();
 		}
 	}

@@ -11,7 +11,10 @@ mod renderer;
 pub use renderer::Renderer;
 
 mod sphere;
-pub use sphere::{create_sample_scene, Material, Sphere, SPHERE_BUFFER_BIND_GROUP};
+pub use sphere::{
+	create_10_metalics_scene, create_sample_scene, create_simple_scene, Material, Sphere,
+	SPHERE_BUFFER_BIND_GROUP,
+};
 
 #[inline(always)]
 pub const fn to_degrees(radians: f32) -> f32 {

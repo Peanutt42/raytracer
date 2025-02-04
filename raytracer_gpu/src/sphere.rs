@@ -59,6 +59,50 @@ impl Sphere {
 }
 
 #[allow(unused)]
+pub fn create_simple_scene() -> Vec<Sphere> {
+	vec![
+		Sphere::new(
+			Vec3::new(0.0, 1.0, -2.0),
+			0.5,
+			Vec3::new(1.0, 0.0, 0.0),
+			Material::Lambertain { emission: 0.5 },
+		),
+		Sphere::new(
+			Vec3::new(1.0, 0.5, -3.0),
+			0.8,
+			Vec3::new(0.75, 0.75, 0.75),
+			Material::Metalic { fuzz: 0.05 },
+		),
+		Sphere::new(
+			Vec3::new(-1.0, -0.5, -4.0),
+			1.0,
+			Vec3::new(0.75, 0.75, 0.75),
+			Material::Metalic { fuzz: 0.1 },
+		),
+		Sphere::new(
+			Vec3::new(-1.0, 1.0, -4.0),
+			0.4,
+			Vec3::new(0.75, 0.75, 0.75),
+			Material::Metalic { fuzz: 0.4 },
+		),
+		// sun
+		Sphere::new(
+			Vec3::new(10000.0, 5000.0, 10000.0),
+			5000.0,
+			Vec3::new(0.8, 0.4, 0.2),
+			Material::Lambertain { emission: 15.0 },
+		),
+		// ground
+		Sphere::new(
+			Vec3::new(0.0, -100002.0, 0.0),
+			100000.0,
+			Vec3::new(0.5, 0.5, 0.5),
+			Material::Lambertain { emission: 0.0 },
+		),
+	]
+}
+
+#[allow(unused)]
 pub fn create_10_metalics_scene() -> Vec<Sphere> {
 	let mut spheres = vec![
 		// glowing red
@@ -98,6 +142,7 @@ pub fn create_10_metalics_scene() -> Vec<Sphere> {
 	spheres
 }
 
+#[allow(unused)]
 pub fn create_sample_scene() -> Vec<Sphere> {
 	let mut spheres = Vec::new();
 

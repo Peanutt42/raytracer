@@ -36,6 +36,8 @@ fn random_unit_vec3(seed: ptr<function, u32>) -> vec3<f32> {
 
 
 struct Camera {
+	inverse_projection: mat4x4<f32>,
+	inverse_view: mat4x4<f32>,
 	position: vec3<f32>,
 }
 
@@ -115,15 +117,9 @@ fn get_ray_point(ray: Ray, distance: f32) -> vec3<f32> {
 	return ray.origin + ray.dir * distance;
 }
 
-/*
-TODO:
-
-let unit_dir = ray_dir.normalize();
-let a = 0.5 * (unit_dir.y + 1.0);
-Vec3::one() * (1.0 - a) + Vec3::new(0.5, 0.7, 1.0) * a
-*/
 fn sky_color(ray: Ray) -> vec3<f32> {
-	return vec3<f32>(0.5, 0.7, 1.0);
+	let a = 0.5 * (ray.dir.y + 1.0);
+	return vec3<f32>(1.0) * (1.0 - a) + vec3<f32>(0.5, 0.7, 1.0) * a;
 }
 
 // returns wheter to continue tracing the ray (returns false when sky was hit)
@@ -158,6 +154,16 @@ fn ray_color(light: ptr<function, vec3<f32>>, contribution: ptr<function, vec3<f
 	return true;
 }
 
+fn ray_dir(global_id: vec3<u32>, texture_size: vec2<i32>, pcg_state: ptr<function, u32>) -> vec3<f32> {
+	let sample_offset = vec2<f32>(random_f32_in_range(pcg_state, -0.5, 0.5), random_f32_in_range(pcg_state, -0.5, 0.5));
+
+	var coord = (vec2<f32>(global_id.xy) + sample_offset) / vec2<f32>(texture_size);
+	coord = coord * 2.0 - vec2<f32>(1.0); // -1.0 -> 1.0
+
+	let target_ = camera.inverse_projection * vec4<f32>(coord, 1.0, 1.0);
+	return (camera.inverse_view * vec4<f32>(normalize(target_.xyz / target_.w), 0.0)).xyz;
+}
+
 @group(0) @binding(0) var<storage> spheres: array<Sphere>;
 @group(0) @binding(1) var output_image: texture_storage_2d<rgba32float, read_write>;
 
@@ -167,7 +173,9 @@ fn ray_color(light: ptr<function, vec3<f32>>, contribution: ptr<function, vec3<f
 
 @compute @workgroup_size(16, 16, 1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>, @builtin(workgroup_id) workgroup_id: vec3<u32>) {
-    let texture_size = textureDimensions(output_image);
+    let texture_size: vec2<i32> = textureDimensions(output_image);
+
+    var pcg_state = frame_counter;
 
     let x = i32(global_id.x);
     let y = i32(global_id.y);
@@ -175,21 +183,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>, @builtin(workgroup_
         return;
     }
 
-    let aspect_ratio = f32(texture_size.x) / f32(texture_size.y);
-    var uv = vec2<f32>(
-        (f32(global_id.x) + 0.5) / f32(texture_size.x) * 2.0 - 1.0,
-        (f32(global_id.y) + 0.5) / f32(texture_size.y) * 2.0 - 1.0
-    );
-
-    uv.x *= aspect_ratio;
-
-    var pcg_state = frame_counter;
-
-    let random_uv_offset_x = (random_f32_in_range(&pcg_state, -0.5, 0.5) / f32(texture_size.x)) * aspect_ratio;
-    let random_uv_offset_y = random_f32_in_range(&pcg_state, -0.5, 0.5) / f32(texture_size.y);
-
-    uv += vec2<f32>(random_uv_offset_x, random_uv_offset_y);
-    var ray = Ray(camera.position, normalize(vec3<f32>(uv, -1.0)));
+    var ray = Ray(camera.position, ray_dir(global_id, texture_size, &pcg_state));
     var light = vec3<f32>(0.0);
     var contribution = vec3<f32>(1.0);
 

@@ -1,6 +1,6 @@
 use glam::Vec3;
 use notify::{RecursiveMode, Watcher};
-use raytracer_gpu::{create_sample_scene, Camera, Renderer};
+use raytracer_gpu::{create_simple_scene, Camera, Renderer};
 use std::{
 	collections::HashSet,
 	path::PathBuf,
@@ -29,15 +29,20 @@ async fn run() {
 		.build(&event_loop)
 		.unwrap();
 
-	let mut camera = Camera::new(Vec3::new(0.0, 0.0, 0.0));
+	let mut camera = Camera::new(Vec3::new(0.0, 0.0, 0.0), -90.0, 0.0, 90.0, 0.1, 1000.0);
 
-	let spheres = create_sample_scene(); // create_10_metalics_scene();
+	// also see: create_sample_scene, create_10_metalics_scene
+	let spheres = create_simple_scene();
 
 	let mut renderer = Renderer::new(&window, &spheres, camera).await;
 
 	let mut last_redraw = Instant::now();
 
 	let mut pressed_key_codes = HashSet::<VirtualKeyCode>::new();
+	let mut pressed_mouse_buttons = HashSet::<MouseButton>::new();
+	let mut shift_down = false;
+	let mut ctrl_down = false;
+	let mut mouse_delta = (0.0, 0.0);
 
 	let shader_code_changed_flag = Arc::new(AtomicBool::new(false));
 	let shader_code_changed_flag_clone = shader_code_changed_flag.clone();
@@ -80,7 +85,15 @@ async fn run() {
 					shader_code_changed_flag.store(false, Ordering::Relaxed);
 				}
 
-				camera_input_controller(&mut camera, &pressed_key_codes, delta_time.as_secs_f32());
+				camera_input_controller(
+					&mut camera,
+					&pressed_key_codes,
+					&pressed_mouse_buttons,
+					&mut mouse_delta,
+					ctrl_down,
+					shift_down,
+					delta_time.as_secs_f32(),
+				);
 
 				renderer.update_camera(camera);
 
@@ -120,6 +133,31 @@ async fn run() {
 					}
 				}
 			},
+			Event::WindowEvent {
+				event: WindowEvent::ModifiersChanged(modifiers),
+				..
+			} => {
+				ctrl_down = modifiers.contains(ModifiersState::CTRL);
+				shift_down = modifiers.contains(ModifiersState::SHIFT);
+			}
+			Event::WindowEvent {
+				event: WindowEvent::MouseInput { state, button, .. },
+				..
+			} => match state {
+				ElementState::Pressed => {
+					pressed_mouse_buttons.insert(button);
+				}
+				ElementState::Released => {
+					pressed_mouse_buttons.remove(&button);
+				}
+			},
+			Event::DeviceEvent {
+				event: DeviceEvent::MouseMotion { delta },
+				..
+			} => {
+				mouse_delta.0 += delta.0;
+				mouse_delta.1 += delta.1;
+			}
 			_ => {}
 		}
 	});
@@ -127,20 +165,40 @@ async fn run() {
 
 fn camera_input_controller(
 	camera: &mut Camera,
-	pressed_key_scancodes: &HashSet<VirtualKeyCode>,
+	pressed_key_codes: &HashSet<VirtualKeyCode>,
+	pressed_mouse_buttons: &HashSet<MouseButton>,
+	mouse_delta: &mut (f64, f64),
+	ctrl_down: bool,
+	shift_down: bool,
 	dt: f32,
 ) {
+	if !pressed_mouse_buttons.contains(&MouseButton::Left)
+		&& !pressed_mouse_buttons.contains(&MouseButton::Right)
+	{
+		*mouse_delta = (0.0, 0.0);
+		return;
+	}
+
+	const SENSITIVITY: f32 = 18.0;
+	let delta_yaw = mouse_delta.0 as f32 * SENSITIVITY * dt;
+	let delta_pitch = -mouse_delta.1 as f32 * SENSITIVITY * dt;
+	camera.yaw += delta_yaw;
+	camera.pitch = (camera.pitch + delta_pitch).clamp(-89.9, 89.9);
+	*mouse_delta = (0.0, 0.0);
+
 	const SPEED: f32 = 4.0;
 
-	let input_is_key_down = |key_code| -> bool { pressed_key_scancodes.contains(&key_code) };
+	let input_is_key_down = |key_code| -> bool { pressed_key_codes.contains(&key_code) };
 
-	let speed = SPEED;
-	/*if input_is_key_down(VirtualKeyCode::ShiftLeft) {
+	let mut speed = SPEED;
+	if shift_down {
 		speed *= 2.0;
 	}
-	if input_is_key_down(KeyCode::ControlLeft) {
+	if ctrl_down {
 		speed *= 0.5;
-	}*/
+	}
+
+	let mut move_dir = Vec3::ZERO;
 
 	let mut amount_forward = if input_is_key_down(VirtualKeyCode::W) {
 		1.0
@@ -150,7 +208,7 @@ fn camera_input_controller(
 	if input_is_key_down(VirtualKeyCode::S) {
 		amount_forward -= 1.0;
 	}
-	camera.position += camera.get_forward() * amount_forward * speed * dt;
+	move_dir += camera.get_forward() * amount_forward;
 
 	let mut amount_right = if input_is_key_down(VirtualKeyCode::A) {
 		-1.0
@@ -160,7 +218,7 @@ fn camera_input_controller(
 	if input_is_key_down(VirtualKeyCode::D) {
 		amount_right += 1.0;
 	}
-	camera.position += camera.get_right() * amount_right * speed * dt;
+	move_dir += camera.get_right() * amount_right;
 
 	let mut amount_up = if input_is_key_down(VirtualKeyCode::E) {
 		1.0
@@ -170,5 +228,12 @@ fn camera_input_controller(
 	if input_is_key_down(VirtualKeyCode::Q) {
 		amount_up -= 1.0;
 	}
-	camera.position += camera.get_up() * amount_up * speed * dt;
+	move_dir += Camera::WORLD_UP * amount_up;
+
+	let move_dir = if move_dir == Vec3::ZERO {
+		Vec3::ZERO
+	} else {
+		move_dir.normalize()
+	};
+	camera.position += move_dir * speed * dt;
 }
