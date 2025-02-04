@@ -1,8 +1,12 @@
 use std::{borrow::Cow, path::Path};
-use wgpu::{util::DeviceExt, Adapter, BindGroup, BindGroupLayout, Buffer, CommandEncoder, ComputePipeline, Device, ErrorFilter, Features, Instance, Limits, Queue, RenderPipeline, Sampler, ShaderModule, ShaderStages, Surface, SurfaceConfiguration, Texture, TextureView, TextureViewDescriptor};
+use wgpu::{
+	util::DeviceExt, Adapter, BindGroup, BindGroupLayout, Buffer, CommandEncoder, ComputePipeline,
+	Device, ErrorFilter, Features, Instance, Limits, Queue, RenderPipeline, Sampler, ShaderModule,
+	ShaderStages, Surface, SurfaceConfiguration, Texture, TextureView, TextureViewDescriptor,
+};
 use winit::{dpi::PhysicalSize, window::Window};
 
-use crate::{Camera, CameraUniformBuffer, Sphere, UniformBuffer, SPHERE_BUFFER_BIND_GROUP};
+use crate::{Camera, CameraUniformBuffer, Cube, Sphere, UniformBuffer, COMPUTE_BIND_GROUP};
 
 const FRAME_COUNTER_UNIFORM_BUFFER_BIND_GROUP: u32 = 1;
 
@@ -28,7 +32,9 @@ pub struct Renderer {
 	#[allow(unused)]
 	compute_view: wgpu::TextureView,
 	#[allow(unused)]
-	compute_buffer: Buffer,
+	sphere_buffer: Buffer,
+	#[allow(unused)]
+	cube_buffer: Buffer,
 	compute_bind_group: wgpu::BindGroup,
 	#[allow(unused)]
 	compute_bind_group_layout: BindGroupLayout,
@@ -43,7 +49,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-	pub async fn new(window: &Window, spheres: &[Sphere], camera: Camera) -> Self {
+	pub async fn new(window: &Window, spheres: &[Sphere], cubes: &[Cube], camera: Camera) -> Self {
 		let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
 		let surface = unsafe { instance.create_surface(&window) }.unwrap();
 
@@ -111,9 +117,20 @@ impl Renderer {
 						},
 						count: None,
 					},
-					// Storage texture (compute write)
+					// Cube buffer
 					wgpu::BindGroupLayoutEntry {
 						binding: 1,
+						visibility: wgpu::ShaderStages::COMPUTE,
+						ty: wgpu::BindingType::Buffer {
+							ty: wgpu::BufferBindingType::Storage { read_only: true },
+							has_dynamic_offset: false,
+							min_binding_size: None,
+						},
+						count: None,
+					},
+					// Storage texture (compute write)
+					wgpu::BindGroupLayoutEntry {
+						binding: 2,
 						visibility: wgpu::ShaderStages::COMPUTE,
 						ty: wgpu::BindingType::StorageTexture {
 							access: wgpu::StorageTextureAccess::ReadWrite,
@@ -150,9 +167,15 @@ impl Renderer {
 				],
 			});
 
-		let compute_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+		let sphere_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
 			label: Some("Compute Sphere Buffer"),
 			contents: bytemuck::cast_slice(spheres),
+			usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+		});
+
+		let cube_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+			label: Some("Compute Cube Buffer"),
+			contents: bytemuck::cast_slice(cubes),
 			usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
 		});
 
@@ -164,7 +187,8 @@ impl Renderer {
 		let compute_bind_group = Self::create_compute_bind_group(
 			&device,
 			&compute_bind_group_layout,
-			&compute_buffer,
+			&sphere_buffer,
+			&cube_buffer,
 			&compute_view,
 		);
 
@@ -182,7 +206,8 @@ impl Renderer {
 			&compute_bind_group_layout,
 			&camera_uniform_buffer,
 			&frame_counter_uniform_buffer,
-		).expect("failed to compile compute shader");
+		)
+		.expect("failed to compile compute shader");
 
 		let render_pipeline = Self::create_render_pipeline(
 			Cow::Borrowed(include_str!("shaders/render.wgsl")),
@@ -190,7 +215,8 @@ impl Renderer {
 			&render_bind_group_layout,
 			&frame_counter_uniform_buffer,
 			&config,
-		).expect("failed to compile render shader");
+		)
+		.expect("failed to compile render shader");
 
 		Self {
 			instance,
@@ -207,7 +233,8 @@ impl Renderer {
 			compute_pipeline,
 			compute_texture,
 			compute_view,
-			compute_buffer,
+			sphere_buffer,
+			cube_buffer,
 			compute_bind_group,
 			compute_bind_group_layout,
 			render_pipeline,
@@ -218,7 +245,11 @@ impl Renderer {
 		}
 	}
 
-	fn create_shader_module(device: &Device, shader_code: Cow<'static, str>, label: Option<&'static str>) -> Result<ShaderModule, String> {
+	fn create_shader_module(
+		device: &Device,
+		shader_code: Cow<'static, str>,
+		label: Option<&'static str>,
+	) -> Result<ShaderModule, String> {
 		device.push_error_scope(ErrorFilter::Validation);
 
 		let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -227,9 +258,11 @@ impl Renderer {
 		});
 
 		if let Some(e) = pollster::block_on(device.pop_error_scope()) {
-			return Err( match e {
+			return Err(match e {
 				wgpu::Error::OutOfMemory { source } => format!("Out of Memory: {source}"),
-				wgpu::Error::Validation { description, ..} => format!("Failed to compile shader:\n{description}"),
+				wgpu::Error::Validation { description, .. } => {
+					format!("Failed to compile shader:\n{description}")
+				}
 			});
 		}
 
@@ -275,11 +308,7 @@ impl Renderer {
 		frame_counter_uniform_buffer: &UniformBuffer<u32, FRAME_COUNTER_UNIFORM_BUFFER_BIND_GROUP>,
 		config: &SurfaceConfiguration,
 	) -> Result<RenderPipeline, String> {
-		let shader = Self::create_shader_module(
-			device,
-			shader_code,
-			None,
-		)?;
+		let shader = Self::create_shader_module(device, shader_code, None)?;
 
 		let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
 			label: None,
@@ -335,21 +364,26 @@ impl Renderer {
 
 	fn create_compute_bind_group(
 		device: &Device,
-		storage_bind_group_layout: &BindGroupLayout,
-		storage_buffer: &Buffer,
-		storage_view: &TextureView,
+		compute_bind_group_layout: &BindGroupLayout,
+		sphere_buffer: &Buffer,
+		cube_buffer: &Buffer,
+		compute_view: &TextureView,
 	) -> BindGroup {
 		device.create_bind_group(&wgpu::BindGroupDescriptor {
 			label: Some("Compute Bind Group"),
-			layout: storage_bind_group_layout,
+			layout: compute_bind_group_layout,
 			entries: &[
 				wgpu::BindGroupEntry {
 					binding: 0,
-					resource: storage_buffer.as_entire_binding(),
+					resource: sphere_buffer.as_entire_binding(),
 				},
 				wgpu::BindGroupEntry {
 					binding: 1,
-					resource: wgpu::BindingResource::TextureView(storage_view),
+					resource: cube_buffer.as_entire_binding(),
+				},
+				wgpu::BindGroupEntry {
+					binding: 2,
+					resource: wgpu::BindingResource::TextureView(compute_view),
 				},
 			],
 		})
@@ -417,7 +451,8 @@ impl Renderer {
 		self.compute_bind_group = Self::create_compute_bind_group(
 			&self.device,
 			&self.compute_bind_group_layout,
-			&self.compute_buffer,
+			&self.sphere_buffer,
+			&self.cube_buffer,
 			&self.compute_view,
 		);
 
@@ -515,7 +550,8 @@ impl Renderer {
 		self.compute_bind_group = Self::create_compute_bind_group(
 			&self.device,
 			&self.compute_bind_group_layout,
-			&self.compute_buffer,
+			&self.sphere_buffer,
+			&self.cube_buffer,
 			&self.compute_view,
 		);
 	}
@@ -536,7 +572,7 @@ impl Renderer {
 		{
 			let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
 			pass.set_pipeline(&self.compute_pipeline);
-			pass.set_bind_group(SPHERE_BUFFER_BIND_GROUP, &self.compute_bind_group, &[]);
+			pass.set_bind_group(COMPUTE_BIND_GROUP, &self.compute_bind_group, &[]);
 			self.camera_uniform_buffer.bind_compute(&mut pass);
 			self.frame_counter_uniform_buffer
 				.custom_bind_compute(&mut pass, 2);

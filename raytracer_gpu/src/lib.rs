@@ -10,11 +10,17 @@ pub use camera::{Camera, CameraUniformBuffer};
 mod renderer;
 pub use renderer::Renderer;
 
+mod material;
+pub use material::{Material, MaterialType, COMPUTE_BIND_GROUP};
+
+mod cube;
+pub use cube::Cube;
+
 mod sphere;
-pub use sphere::{
-	create_10_metallic_scene, create_sample_scene, create_simple_scene, Material, Sphere,
-	SPHERE_BUFFER_BIND_GROUP,
-};
+pub use sphere::Sphere;
+
+mod scenes;
+pub use scenes::{create_10_metallic_scene, create_sample_scene, create_simple_scene};
 
 #[inline(always)]
 pub const fn to_degrees(radians: f32) -> f32 {

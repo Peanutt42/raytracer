@@ -1,6 +1,6 @@
 use glam::Vec3;
 use notify::{RecursiveMode, Watcher};
-use raytracer_gpu::{create_simple_scene, Camera, Renderer};
+use raytracer_gpu::{create_sample_scene, Camera, Renderer};
 use std::{
 	collections::HashSet,
 	path::PathBuf,
@@ -32,9 +32,9 @@ async fn run() {
 	let mut camera = Camera::new(Vec3::new(0.0, 0.0, 0.0), -90.0, 0.0, 90.0, 0.1, 1000.0);
 
 	// also see: create_simple_scene, create_sample_scene, create_10_metallic_scene
-	let spheres = create_simple_scene();
+	let (spheres, cubes) = create_sample_scene();
 
-	let mut renderer = Renderer::new(&window, &spheres, camera).await;
+	let mut renderer = Renderer::new(&window, &spheres, &cubes, camera).await;
 
 	let mut last_redraw = Instant::now();
 
@@ -65,11 +65,14 @@ async fn run() {
 		match event {
 			Event::RedrawRequested(_) => {
 				let delta_time = Instant::now() - last_redraw;
-				window.set_title(format!(
-					"{:.0} fps ({delta_time:.2?}) frame: {}",
-					1.0 / delta_time.as_secs_f64(),
-					renderer.frame_counter
-				).as_str());
+				window.set_title(
+					format!(
+						"WGPU Compute Raytracer: {:.0} fps ({delta_time:.2?}) frame: {}",
+						1.0 / delta_time.as_secs_f64(),
+						renderer.frame_counter
+					)
+					.as_str(),
+				);
 				last_redraw = Instant::now();
 
 				if shader_code_changed_flag.load(Ordering::Relaxed) {
@@ -177,9 +180,9 @@ fn camera_input_controller(
 		return;
 	}
 
-	const SENSITIVITY: f32 = 18.0;
-	let delta_yaw = mouse_delta.0 as f32 * SENSITIVITY * dt;
-	let delta_pitch = -mouse_delta.1 as f32 * SENSITIVITY * dt;
+	const SENSITIVITY: f32 = 0.25;
+	let delta_yaw = mouse_delta.0 as f32 * SENSITIVITY;
+	let delta_pitch = -mouse_delta.1 as f32 * SENSITIVITY;
 	camera.yaw += delta_yaw;
 	camera.pitch = (camera.pitch + delta_pitch).clamp(-89.9, 89.9);
 	*mouse_delta = (0.0, 0.0);
