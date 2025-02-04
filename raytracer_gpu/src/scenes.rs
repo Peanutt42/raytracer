@@ -37,15 +37,19 @@ pub fn create_simple_scene() -> (Vec<Sphere>, Vec<Cube>) {
 			Vec3::new(0.8, 0.4, 0.2),
 			Material::Lambertain { emission: 15.0 },
 		),
+	];
+
+	let cubes = vec![
 		// ground
-		Sphere::new(
+		Cube::new(
 			Vec3::new(0.0, -100002.0, 0.0),
-			100000.0,
+			Vec3::splat(100000.0),
 			Vec3::new(0.5, 0.5, 0.5),
 			Material::Lambertain { emission: 0.0 },
 		),
 	];
-	(spheres, vec![])
+
+	(spheres, cubes)
 }
 
 #[allow(unused)]
@@ -65,10 +69,13 @@ pub fn create_10_metallic_scene() -> (Vec<Sphere>, Vec<Cube>) {
 			Vec3::new(0.8, 0.4, 0.2),
 			Material::Lambertain { emission: 30.0 },
 		),
+	];
+
+	let cubes = vec![
 		// ground
-		Sphere::new(
+		Cube::new(
 			Vec3::new(0.0, -100002.0, 0.0),
-			100000.0,
+			Vec3::splat(100000.0),
 			Vec3::new(0.5, 0.5, 0.5),
 			Material::Lambertain { emission: 0.0 },
 		),
@@ -85,7 +92,7 @@ pub fn create_10_metallic_scene() -> (Vec<Sphere>, Vec<Cube>) {
 		));
 	}
 
-	(spheres, vec![])
+	(spheres, cubes)
 }
 
 #[allow(unused)]
