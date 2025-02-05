@@ -6,6 +6,7 @@ Features:
 - [X] cpu software implementation (headless)
 - [X] interactive window with cpu implementation
 - [X] GPU accelerated implementation (using compute shaders in wgpu)
+- [X] Hot reloading gpu shaders almost instantly
 - [ ] headless mode for gpu implementation
 
 ## Sample
