@@ -576,8 +576,8 @@ impl Renderer {
 			self.camera_uniform_buffer.bind_compute(&mut pass);
 			self.frame_counter_uniform_buffer
 				.custom_bind_compute(&mut pass, 2);
-			let workgroups_x = (self.config.width + 15) / 16;
-			let workgroups_y = (self.config.height + 15) / 16;
+			let workgroups_x = self.config.width.div_ceil(16);
+			let workgroups_y = self.config.height.div_ceil(16);
 			pass.dispatch_workgroups(workgroups_x, workgroups_y, 1);
 		}
 
