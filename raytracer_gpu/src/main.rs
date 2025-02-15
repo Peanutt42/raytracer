@@ -1,6 +1,6 @@
 use glam::Vec3;
 use notify::{RecursiveMode, Watcher};
-use raytracer_gpu::{create_simple_scene, Camera, Renderer};
+use raytracer_gpu::{create_sample_scene, Camera, Renderer};
 use std::{
 	collections::HashSet,
 	path::PathBuf,
@@ -31,8 +31,8 @@ async fn run() {
 
 	let mut camera = Camera::new(Vec3::new(0.0, 0.0, 0.0), -90.0, 0.0, 90.0, 0.1, 1000.0);
 
-	// also see: create_simple_scene, create_sample_scene, create_10_metallic_scene
-	let (spheres, cubes) = create_simple_scene();
+	// also see: create_simple_scene, create_sample_scene, create_10_metallic_scene, create_glass_scene
+	let (spheres, cubes) = create_sample_scene();
 
 	let mut renderer = Renderer::new(&window, &spheres, &cubes, camera).await;
 

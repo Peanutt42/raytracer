@@ -49,6 +49,7 @@ struct Ray {
 struct RayHit {
 	hit_point: vec3<f32>,
 	normal: vec3<f32>,
+	front_face: bool,
 }
 
 struct Scattered {
@@ -56,11 +57,17 @@ struct Scattered {
 	attenuation: vec3<f32>,
 }
 
+fn reflectance(cosine: f32, ref_idx: f32) -> f32 {
+	var r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
+	r0 *= r0;
+	return r0 + (1.0 - r0) * pow(1.0 - cosine, 5.0);
+}
+
 fn scatter(albedo: vec3<f32>, material_type: u32, material_param1: f32, ray_in: Ray, ray_hit: RayHit, seed: ptr<function, u32>) -> Scattered {
 	switch (material_type) {
 		// LAMBERTAIN_MATERIAL_TYPE
 		case 0u, default: {
-			let dir = ray_hit.normal + random_unit_vec3(seed);
+			let dir = normalize(ray_hit.normal + random_unit_vec3(seed));
 			return Scattered(dir, albedo);
 		}
 		// METALIC_MATERIAL_TYPE
@@ -69,17 +76,23 @@ fn scatter(albedo: vec3<f32>, material_type: u32, material_param1: f32, ray_in: 
 			let dir = reflect(ray_in.dir, ray_hit.normal) + fuzz * random_unit_vec3(seed);
 			return Scattered(dir, albedo);
 		}
+		// DIELECTRIC_MATERIAL_TYPE
+		case 2u: {
+			var ir = select(material_param1, 1.0 / material_param1, ray_hit.front_face);
+			let cos_theta = min(dot(-ray_in.dir, ray_hit.normal), 1.0);
+			let sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+			let cannot_refract = ir * sin_theta > 1.0;
+			let reflect = cannot_refract || (reflectance(cos_theta, ir) > random_f32_in_range(seed, 0.0, 1.0));
+			let dir = select(refract(ray_in.dir, ray_hit.normal, ir), reflect(ray_in.dir, ray_hit.normal), reflect);
+			return Scattered(dir, vec3<f32>(1.0));
+		}
 	}
 }
 
 fn emission(albedo: vec3<f32>, material_type: u32, material_param1: f32) -> vec3<f32> {
-	// LAMBERTAIN_MATERIAL_TYPE
-	if (material_type == 0u) {
-		let emission = material_param1;
-		return albedo * emission;
-	} else {
-		return vec3<f32>(0.0);
-	}
+	let emission = material_param1;
+	// 												LAMBERTAIN_MATERIAL_TYPE
+	return select(vec3<f32>(0.0), albedo * emission, material_type == 0u);
 }
 
 struct Sphere {
@@ -200,24 +213,36 @@ fn ray_color(light: ptr<function, vec3<f32>>, contribution: ptr<function, vec3<f
 
 	let closest_distance = min(closest_sphere_distance, closest_cube_distance);
 	let hit_point = get_ray_point(*ray, closest_distance);
+	var normal = vec3<f32>(0.0);
 	var scattered = Scattered(vec3<f32>(0.0), vec3<f32>(0.0));
 	var emission = vec3<f32>(0.0);
 
 	if (closest_sphere_distance < closest_cube_distance) {
-		let normal = sphere_get_normal(closest_sphere, hit_point);
-		let ray_hit = RayHit(hit_point, normal);
+		normal = sphere_get_normal(closest_sphere, hit_point);
+		let front_face = dot((*ray).dir, normal) < 0.0;
+		if (!front_face) {
+			normal = -normal;
+		}
+		let ray_hit = RayHit(hit_point, normal, front_face);
 		emission = emission(closest_sphere.albedo, closest_sphere.material_type, closest_sphere.material_param1);
 		scattered = scatter(closest_sphere.albedo, closest_sphere.material_type, closest_sphere.material_param1, *ray, ray_hit, seed);
 	} else {
-		let normal = cube_get_normal(closest_cube, hit_point);
-		let ray_hit = RayHit(hit_point, normal);
+		normal = cube_get_normal(closest_cube, hit_point);
+		let front_face = dot((*ray).dir, normal) < 0.0;
+		if (!front_face) {
+			normal = -normal;
+		}
+		let ray_hit = RayHit(hit_point, normal, front_face);
 		emission = emission(closest_cube.albedo, closest_cube.material_type, closest_cube.material_param1);
 		scattered = scatter(closest_cube.albedo, closest_cube.material_type, closest_cube.material_param1, *ray, ray_hit, seed);
 	}
 
+	let emission_strength = dot(normal, (*ray).dir);
+	*light += emission * (*contribution);
 	*contribution *= scattered.attenuation;
-	*light += emission;
-	*ray = Ray(hit_point, scattered.dir);
+	// this fixes circular banding of glass material due to floating point precision issues with ray collision inside
+	let new_ray_origin = hit_point - normal * 1e-4;
+	*ray = Ray(new_ray_origin, scattered.dir);
 	return true;
 }
 
@@ -259,8 +284,8 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>, @builtin(workgroup_
     var light = vec3<f32>(0.0);
     var contribution = vec3<f32>(1.0);
 
-    //				  max_depth: 3
-    for (var i = 0u; i < 3u; i++) {
+    //				  max_depth: 5
+    for (var i = 0u; i < 5u; i++) {
     	if (!ray_color(&light, &contribution, &ray, &pcg_state)) {
      		break;
        	}

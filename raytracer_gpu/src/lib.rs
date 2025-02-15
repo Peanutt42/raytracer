@@ -20,7 +20,9 @@ mod sphere;
 pub use sphere::Sphere;
 
 mod scenes;
-pub use scenes::{create_10_metallic_scene, create_sample_scene, create_simple_scene};
+pub use scenes::{
+	create_10_metallic_scene, create_glass_scene, create_sample_scene, create_simple_scene,
+};
 
 #[inline(always)]
 pub const fn to_degrees(radians: f32) -> f32 {

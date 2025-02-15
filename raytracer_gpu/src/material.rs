@@ -4,6 +4,7 @@ pub const COMPUTE_BIND_GROUP: u32 = 0;
 pub enum Material {
 	Lambertain { emission: f32 },
 	Metalic { fuzz: f32 },
+	Dielectric { ir: f32 },
 }
 
 impl Material {
@@ -11,6 +12,7 @@ impl Material {
 		match self {
 			Self::Lambertain { .. } => MaterialType::LAMBERTAIN,
 			Self::Metalic { .. } => MaterialType::METALIC,
+			Self::Dielectric { .. } => MaterialType::DIELECTRIC,
 		}
 	}
 
@@ -18,6 +20,7 @@ impl Material {
 		match self {
 			Self::Lambertain { emission } => emission,
 			Self::Metalic { fuzz } => fuzz,
+			Self::Dielectric { ir } => ir,
 		}
 	}
 }
@@ -30,4 +33,5 @@ pub struct MaterialType {
 impl MaterialType {
 	pub const LAMBERTAIN: Self = Self { material_type: 0 };
 	pub const METALIC: Self = Self { material_type: 1 };
+	pub const DIELECTRIC: Self = Self { material_type: 2 };
 }
