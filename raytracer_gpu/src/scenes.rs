@@ -141,6 +141,34 @@ pub fn create_10_metallic_scene() -> (Vec<Sphere>, Vec<Cube>) {
 }
 
 #[allow(unused)]
+pub fn create_wallpaper_scene() -> (Vec<Sphere>, Vec<Cube>) {
+	let spheres = vec![
+		Sphere::new(
+			Vec3::new(0.0, 0.0, -2.0),
+			1.0,
+			Vec3::splat(1.0),
+			Material::Dielectric { ir: 1.5 },
+		),
+		Sphere::new(
+			Vec3::new(0.0, 0.0, -2.0),
+			-0.98,
+			Vec3::splat(1.0),
+			Material::Dielectric { ir: 1.5 },
+		),
+	];
+	(
+		spheres,
+		// empty storage buffer is invalid
+		vec![Cube::new(
+			Vec3::default(),
+			Vec3::default(),
+			Vec3::default(),
+			Material::Lambertain { emission: 0.0 },
+		)],
+	)
+}
+
+#[allow(unused)]
 pub fn create_sample_scene() -> (Vec<Sphere>, Vec<Cube>) {
 	let mut spheres = Vec::new();
 	let mut cubes = Vec::new();

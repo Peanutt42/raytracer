@@ -22,6 +22,7 @@ pub use sphere::Sphere;
 mod scenes;
 pub use scenes::{
 	create_10_metallic_scene, create_glass_scene, create_sample_scene, create_simple_scene,
+	create_wallpaper_scene,
 };
 
 #[inline(always)]

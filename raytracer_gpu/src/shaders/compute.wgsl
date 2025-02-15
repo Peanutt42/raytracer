@@ -175,9 +175,24 @@ fn get_ray_point(ray: Ray, distance: f32) -> vec3<f32> {
 	return ray.origin + ray.dir * distance;
 }
 
+/*
+normal skybox color implementation
 fn sky_color(ray: Ray) -> vec3<f32> {
 	let a = 0.5 * (ray.dir.y + 1.0);
 	return vec3<f32>(1.0) * (1.0 - a) + vec3<f32>(0.5, 0.7, 1.0) * a;
+}*/
+
+
+// wallpaper scene sky color implementation
+fn sky_color(ray: Ray) -> vec3<f32> {
+	var strength = 0.5 * (-ray.dir.y + 0.25);
+	let t = 0.5 * (ray.dir.x + 1.0);
+	strength *= 50.0 * pow(99.0, pow(2.0 * t - 1.0, 2.0) - 1.0);
+	let a = vec3<f32>(0.94, 0.02, 0.99);
+	let b = vec3<f32>(0.0, 0.85, 0.98);
+	let c = vec3<f32>(0.0, 0.45, 0.98);
+	let d = vec3<f32>(0.0, 0.98, 0.45);
+	return (a * (1.0 - t) + b * t) * strength + 0.25 * c * (0.5 * (ray.dir.y + 1.0)) + 0.15 * d * (0.5 * (-ray.dir.x + 1.0));
 }
 
 // returns wheter to continue tracing the ray (returns false when sky was hit)

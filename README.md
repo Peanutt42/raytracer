@@ -17,6 +17,7 @@ cd raytracer_gpu
 cargo r --release
 ```
 ![output_many_spheres_and_cubes.png](raytracer_gpu/output_many_spheres_and_cubes.png)
+![output_wallpaper.png](raytracer_gpu/output_wallpaper.png)
 
 ### CPU software raytracing
 generated using:
