@@ -1,3 +1,10 @@
+
+struct RenderInfo {
+	frame_counter: u32,
+	// just a bool!
+	normal_sky_color: u32,
+}
+
 const PCG_MULTIPLIER: u32 = 747796405u;
 const PCG_INCREMENT: u32 = 2891336453u;
 const NOISE1: u32 = 2246822519u;
@@ -175,24 +182,22 @@ fn get_ray_point(ray: Ray, distance: f32) -> vec3<f32> {
 	return ray.origin + ray.dir * distance;
 }
 
-/*
-normal skybox color implementation
 fn sky_color(ray: Ray) -> vec3<f32> {
-	let a = 0.5 * (ray.dir.y + 1.0);
-	return vec3<f32>(1.0) * (1.0 - a) + vec3<f32>(0.5, 0.7, 1.0) * a;
-}*/
-
-
-// wallpaper scene sky color implementation
-fn sky_color(ray: Ray) -> vec3<f32> {
-	var strength = 0.5 * (-ray.dir.y + 0.25);
-	let t = 0.5 * (ray.dir.x + 1.0);
-	strength *= 50.0 * pow(99.0, pow(2.0 * t - 1.0, 2.0) - 1.0);
-	let a = vec3<f32>(0.94, 0.02, 0.99);
-	let b = vec3<f32>(0.0, 0.85, 0.98);
-	let c = vec3<f32>(0.0, 0.45, 0.98);
-	let d = vec3<f32>(0.0, 0.98, 0.45);
-	return (a * (1.0 - t) + b * t) * strength + 0.25 * c * (0.5 * (ray.dir.y + 1.0)) + 0.15 * d * (0.5 * (-ray.dir.x + 1.0));
+	if (render_info.normal_sky_color == 0u) {
+		// not normal, just for wallpaper scene
+		var strength = 0.5 * (-ray.dir.y + 0.25);
+		let t = 0.5 * (ray.dir.x + 1.0);
+		strength *= 50.0 * pow(99.0, pow(2.0 * t - 1.0, 2.0) - 1.0);
+		let a = vec3<f32>(0.94, 0.02, 0.99);
+		let b = vec3<f32>(0.0, 0.85, 0.98);
+		let c = vec3<f32>(0.0, 0.45, 0.98);
+		let d = vec3<f32>(0.0, 0.98, 0.45);
+		return (a * (1.0 - t) + b * t) * strength + 0.25 * c * (0.5 * (ray.dir.y + 1.0)) + 0.15 * d * (0.5 * (-ray.dir.x + 1.0));
+	} else {
+		// normal
+		let a = 0.5 * (ray.dir.y + 1.0);
+		return vec3<f32>(1.0) * (1.0 - a) + vec3<f32>(0.5, 0.7, 1.0) * a;
+	}
 }
 
 // returns wheter to continue tracing the ray (returns false when sky was hit)
@@ -277,17 +282,17 @@ fn ray_dir(global_id: vec3<u32>, texture_size: vec2<i32>, pcg_state: ptr<functio
 
 @group(1) @binding(0) var<uniform> camera: Camera;
 
-@group(2) @binding(0) var<uniform> frame_counter: u32;
+@group(2) @binding(0) var<uniform> render_info: RenderInfo;
 
 @compute @workgroup_size(16, 16, 1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>, @builtin(workgroup_id) workgroup_id: vec3<u32>) {
     let texture_size: vec2<i32> = textureDimensions(output_image);
 
     // this is more noisy at first:
-    var pcg_state = global_id.x * u32(texture_size.x) + global_id.y + frame_counter * u32(texture_size.x * texture_size.y);
+    var pcg_state = global_id.x * u32(texture_size.x) + global_id.y + render_info.frame_counter * u32(texture_size.x * texture_size.y);
 
     // this is more smooth at first, looks more like a painting:
-    // var pcg_state = frame_counter;
+    // var pcg_state = render_info.frame_counter;
 
     let x = i32(global_id.x);
     let y = i32(global_id.y);

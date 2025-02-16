@@ -10,6 +10,14 @@ use crate::{Camera, CameraUniformBuffer, Cube, Sphere, UniformBuffer, COMPUTE_BI
 
 const FRAME_COUNTER_UNIFORM_BUFFER_BIND_GROUP: u32 = 1;
 
+#[repr(C)]
+#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct RenderInfo {
+	pub frame_counter: u32,
+	/// just a bool!
+	normal_sky_color: u32,
+}
+
 pub struct Renderer {
 	#[allow(unused)]
 	instance: Instance,
@@ -24,8 +32,8 @@ pub struct Renderer {
 	camera: Camera,
 	camera_uniform_buffer: CameraUniformBuffer,
 
-	pub frame_counter: u32,
-	frame_counter_uniform_buffer: UniformBuffer<u32, FRAME_COUNTER_UNIFORM_BUFFER_BIND_GROUP>,
+	pub render_info: RenderInfo,
+	render_info_uniform_buffer: UniformBuffer<RenderInfo, FRAME_COUNTER_UNIFORM_BUFFER_BIND_GROUP>,
 
 	compute_pipeline: ComputePipeline,
 	compute_texture: wgpu::Texture,
@@ -49,7 +57,13 @@ pub struct Renderer {
 }
 
 impl Renderer {
-	pub async fn new(window: &Window, spheres: &[Sphere], cubes: &[Cube], camera: Camera) -> Self {
+	pub async fn new(
+		window: &Window,
+		spheres: &[Sphere],
+		cubes: &[Cube],
+		camera: Camera,
+		normal_sky_color: bool,
+	) -> Self {
 		let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
 		let surface = unsafe { instance.create_surface(&window) }.unwrap();
 
@@ -74,14 +88,13 @@ impl Renderer {
 			.await
 			.unwrap();
 
-		let mut config = surface
+		let config = surface
 			.get_default_config(
 				&adapter,
 				window.inner_size().width,
 				window.inner_size().height,
 			)
 			.unwrap();
-		config.format = wgpu::TextureFormat::Rgba8Unorm;
 		surface.configure(&device, &config);
 
 		let sampler = device.create_sampler(&wgpu::SamplerDescriptor::default());
@@ -93,11 +106,14 @@ impl Renderer {
 			&device,
 		);
 
-		let frame_counter = 1;
-		let frame_counter_uniform_buffer =
-			UniformBuffer::<u32, FRAME_COUNTER_UNIFORM_BUFFER_BIND_GROUP>::new(
-				Some("Render Uniform Buffer"),
-				frame_counter,
+		let render_info = RenderInfo {
+			frame_counter: 1,
+			normal_sky_color: normal_sky_color as u32,
+		};
+		let render_info_uniform_buffer =
+			UniformBuffer::<RenderInfo, FRAME_COUNTER_UNIFORM_BUFFER_BIND_GROUP>::new(
+				Some("Render Info Uniform Buffer"),
+				render_info,
 				ShaderStages::FRAGMENT | ShaderStages::COMPUTE,
 				&device,
 			);
@@ -205,7 +221,7 @@ impl Renderer {
 			&device,
 			&compute_bind_group_layout,
 			&camera_uniform_buffer,
-			&frame_counter_uniform_buffer,
+			&render_info_uniform_buffer,
 		)
 		.expect("failed to compile compute shader");
 
@@ -213,7 +229,7 @@ impl Renderer {
 			Cow::Borrowed(include_str!("shaders/render.wgsl")),
 			&device,
 			&render_bind_group_layout,
-			&frame_counter_uniform_buffer,
+			&render_info_uniform_buffer,
 			&config,
 		)
 		.expect("failed to compile render shader");
@@ -228,8 +244,8 @@ impl Renderer {
 			sampler,
 			camera,
 			camera_uniform_buffer,
-			frame_counter,
-			frame_counter_uniform_buffer,
+			render_info,
+			render_info_uniform_buffer,
 			compute_pipeline,
 			compute_texture,
 			compute_view,
@@ -274,7 +290,10 @@ impl Renderer {
 		device: &Device,
 		compute_bind_group_layout: &BindGroupLayout,
 		camera_uniform_buffer: &CameraUniformBuffer,
-		frame_counter_uniform_buffer: &UniformBuffer<u32, FRAME_COUNTER_UNIFORM_BUFFER_BIND_GROUP>,
+		frame_counter_uniform_buffer: &UniformBuffer<
+			RenderInfo,
+			FRAME_COUNTER_UNIFORM_BUFFER_BIND_GROUP,
+		>,
 	) -> Result<ComputePipeline, String> {
 		let shader = Self::create_shader_module(
 			device,
@@ -305,7 +324,10 @@ impl Renderer {
 		shader_code: Cow<'static, str>,
 		device: &Device,
 		render_bind_group_layout: &BindGroupLayout,
-		frame_counter_uniform_buffer: &UniformBuffer<u32, FRAME_COUNTER_UNIFORM_BUFFER_BIND_GROUP>,
+		frame_counter_uniform_buffer: &UniformBuffer<
+			RenderInfo,
+			FRAME_COUNTER_UNIFORM_BUFFER_BIND_GROUP,
+		>,
 		config: &SurfaceConfiguration,
 	) -> Result<RenderPipeline, String> {
 		let shader = Self::create_shader_module(device, shader_code, None)?;
@@ -478,8 +500,8 @@ impl Renderer {
 			.texture
 			.create_view(&wgpu::TextureViewDescriptor::default());
 
-		self.frame_counter_uniform_buffer
-			.update(self.frame_counter, &self.queue);
+		self.render_info_uniform_buffer
+			.update(self.render_info, &self.queue);
 
 		let mut encoder = self
 			.device
@@ -492,7 +514,7 @@ impl Renderer {
 		self.queue.submit(Some(encoder.finish()));
 		output.present();
 
-		self.frame_counter += 1;
+		self.render_info.frame_counter += 1;
 	}
 
 	/// hot reloading also resets accumulation!
@@ -522,14 +544,14 @@ impl Renderer {
 			&self.device,
 			&self.compute_bind_group_layout,
 			&self.camera_uniform_buffer,
-			&self.frame_counter_uniform_buffer,
+			&self.render_info_uniform_buffer,
 		)?;
 
 		let render_pipeline = Self::create_render_pipeline(
 			render_shader_code,
 			&self.device,
 			&self.render_bind_group_layout,
-			&self.frame_counter_uniform_buffer,
+			&self.render_info_uniform_buffer,
 			&self.config,
 		)?;
 
@@ -542,7 +564,7 @@ impl Renderer {
 	/// should get called when camera or any objects move
 	/// -> resets frame counter and clears accumulation image
 	fn reset_accumulation(&mut self) {
-		self.frame_counter = 1;
+		self.render_info.frame_counter = 1;
 		let (storage_texture, storage_view) =
 			Self::create_compute_texture(&self.device, &self.config);
 		self.compute_texture = storage_texture;
@@ -574,7 +596,7 @@ impl Renderer {
 			pass.set_pipeline(&self.compute_pipeline);
 			pass.set_bind_group(COMPUTE_BIND_GROUP, &self.compute_bind_group, &[]);
 			self.camera_uniform_buffer.bind_compute(&mut pass);
-			self.frame_counter_uniform_buffer
+			self.render_info_uniform_buffer
 				.custom_bind_compute(&mut pass, 2);
 			let workgroups_x = self.config.width.div_ceil(16);
 			let workgroups_y = self.config.height.div_ceil(16);
@@ -618,7 +640,7 @@ impl Renderer {
 		});
 		pass.set_pipeline(&self.render_pipeline);
 		pass.set_bind_group(0, &self.render_bind_group, &[]);
-		self.frame_counter_uniform_buffer.bind_render(&mut pass);
+		self.render_info_uniform_buffer.bind_render(&mut pass);
 		pass.draw(0..3, 0..1);
 	}
 }

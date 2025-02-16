@@ -1,6 +1,9 @@
 use glam::Vec3;
 use notify::{RecursiveMode, Watcher};
-use raytracer_gpu::{create_wallpaper_scene, Camera, Renderer};
+use raytracer_gpu::{
+	create_10_metallic_scene, create_glass_scene, create_sample_scene, create_simple_scene,
+	create_wallpaper_scene, Camera, Cube, Renderer, Sphere,
+};
 use std::{
 	collections::HashSet,
 	path::PathBuf,
@@ -22,6 +25,17 @@ fn main() {
 }
 
 async fn run() {
+	#[allow(clippy::type_complexity)]
+	let (create_scene_fn, normal_sky_color): (fn() -> (Vec<Sphere>, Vec<Cube>), bool) =
+		match std::env::args().nth(1) {
+			Some(ref arg) if arg == "simple" => (create_simple_scene, true),
+			Some(ref arg) if arg == "glass" => (create_glass_scene, true),
+			Some(ref arg) if arg == "metal" => (create_10_metallic_scene, true),
+			Some(ref arg) if arg == "sample" => (create_sample_scene, true),
+			Some(ref arg) if arg == "wallpaper" => (create_wallpaper_scene, false),
+			_ => (create_simple_scene, true),
+		};
+
 	let event_loop = EventLoop::new();
 	let window = WindowBuilder::new()
 		.with_title("WGPU Compute Raytracer")
@@ -32,9 +46,9 @@ async fn run() {
 	let mut camera = Camera::new(Vec3::new(0.0, 0.0, 0.0), -90.0, 0.0, 90.0, 0.1, 1000.0);
 
 	// also see: create_simple_scene, create_sample_scene, create_10_metallic_scene, create_glass_scene, create_wallpaper_scene
-	let (spheres, cubes) = create_wallpaper_scene();
+	let (spheres, cubes) = create_scene_fn();
 
-	let mut renderer = Renderer::new(&window, &spheres, &cubes, camera).await;
+	let mut renderer = Renderer::new(&window, &spheres, &cubes, camera, normal_sky_color).await;
 
 	let mut last_redraw = Instant::now();
 
@@ -45,19 +59,27 @@ async fn run() {
 	let mut mouse_delta = (0.0, 0.0);
 
 	let shader_code_changed_flag = Arc::new(AtomicBool::new(false));
-	let shader_code_changed_flag_clone = shader_code_changed_flag.clone();
-	let mut shader_code_file_watcher = notify::recommended_watcher(move |result| match result {
-		Ok(notify::Event { kind, .. }) => {
-			if matches!(kind, notify::EventKind::Modify(_)) {
-				shader_code_changed_flag_clone.store(true, Ordering::Relaxed)
-			}
-		}
-		Err(e) => eprintln!("failed to listen to shader code file changes: {e}"),
-	})
-	.expect("failed to create shader code file watcher");
-	shader_code_file_watcher
-		.watch(&PathBuf::from("src/shaders"), RecursiveMode::Recursive)
-		.expect("failed to watch shader code files");
+	let shader_code_directory = PathBuf::from("src/shaders");
+	let _shader_code_file_watcher = if shader_code_directory.exists() {
+		let shader_code_changed_flag_clone = shader_code_changed_flag.clone();
+		let mut shader_code_file_watcher =
+			notify::recommended_watcher(move |result| match result {
+				Ok(notify::Event { kind, .. }) => {
+					if matches!(kind, notify::EventKind::Modify(_)) {
+						shader_code_changed_flag_clone.store(true, Ordering::Relaxed)
+					}
+				}
+				Err(e) => eprintln!("failed to listen to shader code file changes: {e}"),
+			})
+			.expect("failed to create shader code file watcher");
+		shader_code_file_watcher
+			.watch(&shader_code_directory, RecursiveMode::Recursive)
+			.expect("failed to watch shader code files");
+		Some(shader_code_file_watcher)
+	} else {
+		println!("Warning Shader code will not be hot reloaded");
+		None
+	};
 
 	event_loop.run(move |event, _, control_flow| {
 		*control_flow = ControlFlow::Poll;
@@ -69,7 +91,7 @@ async fn run() {
 					format!(
 						"WGPU Compute Raytracer: {:.0} fps ({delta_time:.2?}) frame: {}",
 						1.0 / delta_time.as_secs_f64(),
-						renderer.frame_counter
+						renderer.render_info.frame_counter
 					)
 					.as_str(),
 				);

@@ -14,9 +14,13 @@ Features:
 ### GPU accelerated raytracing (interactive, no RTX graphics card required!)
 ```bash
 cd raytracer_gpu
-cargo r --release
+cargo r --release -- sample
 ```
 ![output_many_spheres_and_cubes.png](raytracer_gpu/output_many_spheres_and_cubes.png)
+```bash
+cd raytracer_gpu
+cargo r --release -- wallpaper
+```
 ![output_wallpaper.png](raytracer_gpu/output_wallpaper.png)
 
 ### CPU software raytracing
