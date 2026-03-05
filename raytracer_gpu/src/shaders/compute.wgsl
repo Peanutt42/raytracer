@@ -266,7 +266,7 @@ fn ray_color(light: ptr<function, vec3<f32>>, contribution: ptr<function, vec3<f
 	return true;
 }
 
-fn ray_dir(global_id: vec3<u32>, texture_size: vec2<i32>, pcg_state: ptr<function, u32>) -> vec3<f32> {
+fn ray_dir(global_id: vec3<u32>, texture_size: vec2<u32>, pcg_state: ptr<function, u32>) -> vec3<f32> {
 	let sample_offset = vec2<f32>(random_f32_in_range(pcg_state, -0.5, 0.5), random_f32_in_range(pcg_state, -0.5, 0.5));
 
 	var coord = (vec2<f32>(global_id.xy) + sample_offset) / vec2<f32>(texture_size);
@@ -286,16 +286,16 @@ fn ray_dir(global_id: vec3<u32>, texture_size: vec2<i32>, pcg_state: ptr<functio
 
 @compute @workgroup_size(16, 16, 1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>, @builtin(workgroup_id) workgroup_id: vec3<u32>) {
-    let texture_size: vec2<i32> = textureDimensions(output_image);
+    let texture_size: vec2<u32> = textureDimensions(output_image);
 
     // this is more noisy at first:
-    var pcg_state = global_id.x * u32(texture_size.x) + global_id.y + render_info.frame_counter * u32(texture_size.x * texture_size.y);
+    var pcg_state = global_id.x * texture_size.x + global_id.y + render_info.frame_counter * texture_size.x * texture_size.y;
 
     // this is more smooth at first, looks more like a painting:
     // var pcg_state = render_info.frame_counter;
 
-    let x = i32(global_id.x);
-    let y = i32(global_id.y);
+    let x = global_id.x;
+    let y = global_id.y;
     if (x >= texture_size.x || y >= texture_size.y) {
         return;
     }

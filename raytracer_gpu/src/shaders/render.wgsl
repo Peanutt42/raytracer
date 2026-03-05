@@ -6,7 +6,6 @@ struct RenderInfo {
 }
 
 @group(0) @binding(0) var output_texture: texture_2d<f32>;
-@group(0) @binding(1) var output_sampler: sampler;
 @group(1) @binding(0) var<uniform> render_info: RenderInfo;
 
 struct VertexOutput {
@@ -33,7 +32,9 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-	let color = textureSample(output_texture, output_sampler, in.uv).xyz;
+	let dims = vec2<f32>(textureDimensions(output_texture));
+	let coords = vec2<i32>(in.uv * dims);
+	let color = textureLoad(output_texture, coords, 0).xyz; // textureSample(output_texture, output_sampler, in.uv).xyz;
 	let frame_count: f32 = f32(render_info.frame_counter);
     return vec4<f32>(color / frame_count, 1.0);
 }

@@ -2,8 +2,8 @@ use std::{borrow::Cow, path::Path, sync::Arc};
 use wgpu::{
 	Adapter, BindGroup, BindGroupLayout, Buffer, CommandEncoder, ComputePipeline, Device,
 	ErrorFilter, ExperimentalFeatures, Features, Instance, Limits, MemoryHints, Queue,
-	RenderPipeline, Sampler, ShaderModule, ShaderStages, StoreOp, Surface, SurfaceConfiguration,
-	Texture, TextureView, TextureViewDescriptor, Trace, util::DeviceExt,
+	RenderPipeline, ShaderModule, ShaderStages, StoreOp, Surface, SurfaceConfiguration, Texture,
+	TextureView, TextureViewDescriptor, Trace, util::DeviceExt,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -28,7 +28,6 @@ pub struct Renderer {
 	device: Device,
 	queue: Queue,
 	config: SurfaceConfiguration,
-	sampler: Sampler,
 
 	camera: Camera,
 	camera_uniform_buffer: CameraUniformBuffer,
@@ -98,8 +97,6 @@ impl Renderer {
 			.unwrap();
 		surface.configure(&device, &config);
 
-		let sampler = device.create_sampler(&wgpu::SamplerDescriptor::default());
-
 		let camera_uniform_buffer = CameraUniformBuffer::new(
 			Some("Camera Uniform"),
 			camera.get_uniform(config.width as f32, config.height as f32),
@@ -168,17 +165,10 @@ impl Renderer {
 						binding: 0,
 						visibility: wgpu::ShaderStages::FRAGMENT,
 						ty: wgpu::BindingType::Texture {
-							sample_type: wgpu::TextureSampleType::Float { filterable: true },
+							sample_type: wgpu::TextureSampleType::Float { filterable: false },
 							view_dimension: wgpu::TextureViewDimension::D2,
 							multisampled: false,
 						},
-						count: None,
-					},
-					// Sampler (render)
-					wgpu::BindGroupLayoutEntry {
-						binding: 1,
-						visibility: wgpu::ShaderStages::FRAGMENT,
-						ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
 						count: None,
 					},
 				],
@@ -209,12 +199,8 @@ impl Renderer {
 			&compute_view,
 		);
 
-		let render_bind_group = Self::create_render_bind_group(
-			&device,
-			&render_bind_group_layout,
-			&render_view,
-			&sampler,
-		);
+		let render_bind_group =
+			Self::create_render_bind_group(&device, &render_bind_group_layout, &render_view);
 		// END: window size dependant
 
 		let compute_pipeline = Self::create_compute_pipeline(
@@ -242,7 +228,6 @@ impl Renderer {
 			device,
 			queue,
 			config,
-			sampler,
 			camera,
 			camera_uniform_buffer,
 			render_info,
@@ -425,20 +410,13 @@ impl Renderer {
 		device: &Device,
 		render_bind_group_layout: &BindGroupLayout,
 		render_view: &TextureView,
-		sampler: &Sampler,
 	) -> BindGroup {
 		device.create_bind_group(&wgpu::BindGroupDescriptor {
 			layout: render_bind_group_layout,
-			entries: &[
-				wgpu::BindGroupEntry {
-					binding: 0,
-					resource: wgpu::BindingResource::TextureView(render_view),
-				},
-				wgpu::BindGroupEntry {
-					binding: 1,
-					resource: wgpu::BindingResource::Sampler(sampler),
-				},
-			],
+			entries: &[wgpu::BindGroupEntry {
+				binding: 0,
+				resource: wgpu::BindingResource::TextureView(render_view),
+			}],
 			label: Some("Render Bind Group"),
 		})
 	}
@@ -492,7 +470,6 @@ impl Renderer {
 			&self.device,
 			&self.render_bind_group_layout,
 			&self.render_view,
-			&self.sampler,
 		);
 
 		self.camera_uniform_buffer.update(
@@ -505,7 +482,16 @@ impl Renderer {
 	}
 
 	pub fn update(&mut self) {
-		let output = self.surface.get_current_texture().unwrap();
+		let output = match self.surface.get_current_texture() {
+			Ok(texture) => texture,
+			Err(wgpu::SurfaceError::Outdated | wgpu::SurfaceError::Lost) => {
+				self.resize(PhysicalSize::new(self.config.width, self.config.height));
+				return;
+			}
+			Err(wgpu::SurfaceError::Timeout) => return,
+			Err(e) => panic!("surface error: {e}"),
+		};
+
 		let view = output
 			.texture
 			.create_view(&wgpu::TextureViewDescriptor::default());
