@@ -1,6 +1,6 @@
 use glam::{Mat4, Vec3};
 
-use crate::{to_radians, UniformBuffer};
+use crate::{UniformBuffer, to_radians};
 
 const CAMERA_UNIFORM_BIND_GROUP: u32 = 1;
 

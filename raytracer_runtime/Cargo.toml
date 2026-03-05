@@ -1,11 +1,11 @@
 [package]
 name = "raytracer_runtime"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 raytracer = { path = "../" }
-num-traits = "0.2"
-rand = "0.8.5"
-rayon = "1.8"
-minifb = "0.25"
+num-traits = { workspace = true }
+rand = { workspace = true }
+rayon = { workspace = true }
+minifb = "0.28.0" 

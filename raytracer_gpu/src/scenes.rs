@@ -1,5 +1,5 @@
 use glam::Vec3;
-use rand::Rng;
+use rand::RngExt;
 
 use crate::{Cube, Material, Sphere};
 

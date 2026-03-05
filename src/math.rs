@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::RngExt;
 use std::ops::{Add, Div, Index, IndexMut, Mul, Neg, Sub};
 
 pub type Scalar = f64;
@@ -11,7 +11,7 @@ pub fn radians(degrees: Scalar) -> Scalar {
 
 #[inline(always)]
 pub fn random(min: Scalar, max: Scalar, rand: &mut rand::prelude::ThreadRng) -> Scalar {
-	rand.gen_range(min..max)
+	rand.random_range(min..max)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -155,9 +155,9 @@ impl Vec3 {
 	#[inline(always)]
 	pub fn random(min: Scalar, max: Scalar, rand: &mut rand::prelude::ThreadRng) -> Self {
 		Vec3 {
-			x: min + (max - min) * rand.gen::<Scalar>(),
-			y: min + (max - min) * rand.gen::<Scalar>(),
-			z: min + (max - min) * rand.gen::<Scalar>(),
+			x: min + (max - min) * rand.random::<Scalar>(),
+			y: min + (max - min) * rand.random::<Scalar>(),
+			z: min + (max - min) * rand.random::<Scalar>(),
 		}
 	}
 

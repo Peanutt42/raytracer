@@ -11,7 +11,7 @@ mod renderer;
 pub use renderer::Renderer;
 
 mod material;
-pub use material::{Material, MaterialType, COMPUTE_BIND_GROUP};
+pub use material::{COMPUTE_BIND_GROUP, Material, MaterialType};
 
 mod cube;
 pub use cube::Cube;

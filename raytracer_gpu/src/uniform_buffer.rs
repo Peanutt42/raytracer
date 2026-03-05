@@ -2,10 +2,10 @@ use std::marker::PhantomData;
 
 use bytemuck::{Pod, Zeroable};
 use wgpu::{
-	util::{BufferInitDescriptor, DeviceExt},
 	BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
 	BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferUsages, ComputePass,
 	Device, Queue, RenderPass, ShaderStages,
+	util::{BufferInitDescriptor, DeviceExt},
 };
 
 // 'T': buffer content structure

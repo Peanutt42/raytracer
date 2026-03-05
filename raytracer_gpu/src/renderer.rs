@@ -1,12 +1,13 @@
-use std::{borrow::Cow, path::Path};
+use std::{borrow::Cow, path::Path, sync::Arc};
 use wgpu::{
-	util::DeviceExt, Adapter, BindGroup, BindGroupLayout, Buffer, CommandEncoder, ComputePipeline,
-	Device, ErrorFilter, Features, Instance, Limits, Queue, RenderPipeline, Sampler, ShaderModule,
-	ShaderStages, Surface, SurfaceConfiguration, Texture, TextureView, TextureViewDescriptor,
+	Adapter, BindGroup, BindGroupLayout, Buffer, CommandEncoder, ComputePipeline, Device,
+	ErrorFilter, ExperimentalFeatures, Features, Instance, Limits, MemoryHints, Queue,
+	RenderPipeline, Sampler, ShaderModule, ShaderStages, StoreOp, Surface, SurfaceConfiguration,
+	Texture, TextureView, TextureViewDescriptor, Trace, util::DeviceExt,
 };
 use winit::{dpi::PhysicalSize, window::Window};
 
-use crate::{Camera, CameraUniformBuffer, Cube, Sphere, UniformBuffer, COMPUTE_BIND_GROUP};
+use crate::{COMPUTE_BIND_GROUP, Camera, CameraUniformBuffer, Cube, Sphere, UniformBuffer};
 
 const FRAME_COUNTER_UNIFORM_BUFFER_BIND_GROUP: u32 = 1;
 
@@ -21,7 +22,7 @@ pub struct RenderInfo {
 pub struct Renderer {
 	#[allow(unused)]
 	instance: Instance,
-	surface: Surface,
+	surface: Arc<Surface<'static>>,
 	#[allow(unused)]
 	adapter: Adapter,
 	device: Device,
@@ -58,14 +59,14 @@ pub struct Renderer {
 
 impl Renderer {
 	pub async fn new(
-		window: &Window,
+		window: Arc<Window>,
 		spheres: &[Sphere],
 		cubes: &[Cube],
 		camera: Camera,
 		normal_sky_color: bool,
 	) -> Self {
-		let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
-		let surface = unsafe { instance.create_surface(&window) }.unwrap();
+		let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
+		let surface = instance.create_surface(window.clone()).unwrap();
 
 		let adapter = instance
 			.request_adapter(&wgpu::RequestAdapterOptions {
@@ -77,14 +78,14 @@ impl Renderer {
 			.unwrap();
 
 		let (device, queue) = adapter
-			.request_device(
-				&wgpu::DeviceDescriptor {
-					label: Some("Device"),
-					features: Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
-					limits: Limits::default(),
-				},
-				None,
-			)
+			.request_device(&wgpu::DeviceDescriptor {
+				label: Some("Device"),
+				required_features: Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
+				required_limits: Limits::default(),
+				experimental_features: ExperimentalFeatures::disabled(),
+				memory_hints: MemoryHints::default(),
+				trace: Trace::Off,
+			})
 			.await
 			.unwrap();
 
@@ -236,7 +237,7 @@ impl Renderer {
 
 		Self {
 			instance,
-			surface,
+			surface: Arc::new(surface),
 			adapter,
 			device,
 			queue,
@@ -266,15 +267,19 @@ impl Renderer {
 		shader_code: Cow<'static, str>,
 		label: Option<&'static str>,
 	) -> Result<ShaderModule, String> {
-		device.push_error_scope(ErrorFilter::Validation);
+		let error_scope_guard = device.push_error_scope(ErrorFilter::Validation);
 
 		let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
 			label,
 			source: wgpu::ShaderSource::Wgsl(shader_code),
 		});
 
-		if let Some(e) = pollster::block_on(device.pop_error_scope()) {
+		if let Some(e) = pollster::block_on(error_scope_guard.pop()) {
 			return Err(match e {
+				wgpu::Error::Internal {
+					source,
+					description,
+				} => format!("Internal error: {description}, source: {source}"),
 				wgpu::Error::OutOfMemory { source } => format!("Out of Memory: {source}"),
 				wgpu::Error::Validation { description, .. } => {
 					format!("Failed to compile shader:\n{description}")
@@ -308,14 +313,16 @@ impl Renderer {
 				camera_uniform_buffer.get_binding(),
 				frame_counter_uniform_buffer.get_binding(),
 			],
-			push_constant_ranges: &[],
+			immediate_size: 0,
 		});
 
 		let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
 			label: Some("Raytrace Compute Pipeline"),
 			layout: Some(&pipeline_layout),
 			module: &shader,
-			entry_point: "main",
+			entry_point: Some("main"),
+			cache: None,
+			compilation_options: wgpu::PipelineCompilationOptions::default(),
 		});
 		Ok(pipeline)
 	}
@@ -338,7 +345,7 @@ impl Renderer {
 				render_bind_group_layout,
 				frame_counter_uniform_buffer.get_binding(),
 			],
-			push_constant_ranges: &[],
+			immediate_size: 0,
 		});
 
 		let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -346,18 +353,21 @@ impl Renderer {
 			layout: Some(&pipeline_layout),
 			vertex: wgpu::VertexState {
 				module: &shader,
-				entry_point: "vs_main",
+				entry_point: Some("vs_main"),
 				buffers: &[],
+				compilation_options: wgpu::PipelineCompilationOptions::default(),
 			},
 			fragment: Some(wgpu::FragmentState {
 				module: &shader,
-				entry_point: "fs_main",
+				entry_point: Some("fs_main"),
 				targets: &[Some(config.format.into())],
+				compilation_options: wgpu::PipelineCompilationOptions::default(),
 			}),
 			primitive: wgpu::PrimitiveState::default(),
 			depth_stencil: None,
 			multisample: wgpu::MultisampleState::default(),
-			multiview: None,
+			multiview_mask: None,
+			cache: None,
 		});
 		Ok(pipeline)
 	}
@@ -605,13 +615,13 @@ impl Renderer {
 
 		// Copy from storage texture to render texture
 		encoder.copy_texture_to_texture(
-			wgpu::ImageCopyTexture {
+			wgpu::TexelCopyTextureInfo {
 				texture: &self.compute_texture,
 				mip_level: 0,
 				origin: wgpu::Origin3d::ZERO,
 				aspect: wgpu::TextureAspect::All,
 			},
-			wgpu::ImageCopyTexture {
+			wgpu::TexelCopyTextureInfo {
 				texture: &self.render_texture,
 				mip_level: 0,
 				origin: wgpu::Origin3d::ZERO,
@@ -631,12 +641,16 @@ impl Renderer {
 			color_attachments: &[Some(wgpu::RenderPassColorAttachment {
 				view,
 				resolve_target: None,
+				depth_slice: None,
 				ops: wgpu::Operations {
 					load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-					store: true,
+					store: StoreOp::Store,
 				},
 			})],
 			depth_stencil_attachment: None,
+			occlusion_query_set: None,
+			timestamp_writes: None,
+			multiview_mask: None,
 		});
 		pass.set_pipeline(&self.render_pipeline);
 		pass.set_bind_group(0, &self.render_bind_group, &[]);

@@ -1,7 +1,7 @@
 mod math;
-pub use math::{radians, random, Ray, Vec3, AABB, Scalar};
+pub use math::{AABB, Ray, Scalar, Vec3, radians, random};
 mod scene;
-pub use scene::{Scene, Object, RayHit, Hittable, Renderable, Bounded};
+pub use scene::{Bounded, Hittable, Object, RayHit, Renderable, Scene};
 mod bvh;
 pub use bvh::BVH;
 mod camera;
@@ -9,6 +9,6 @@ pub use camera::Camera;
 mod materials;
 pub use materials::{Material, Scattered};
 mod shapes;
-pub use shapes::{Sphere, Cube};
+pub use shapes::{Cube, Sphere};
 mod renderer;
 pub use renderer::render;

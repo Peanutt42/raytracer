@@ -1,12 +1,12 @@
 [package]
 name = "raytracer_headless"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 raytracer = { path = "../" }
-num-traits = "0.2"
-rand = "0.8.5"
-image = "0.24.7"
-rayon = "1.8"
-indicatif = { version = "0.17.7", features = ["rayon"] }
+num-traits = { workspace = true }
+rand = { workspace = true }
+image = { workspace = true } 
+rayon = { workspace = true }
+indicatif = { version = "0.18.4", features = ["rayon"] }
