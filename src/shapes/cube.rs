@@ -4,7 +4,7 @@ use crate::{AABB, Bounded, Hittable, Material, Ray, Renderable, Scalar, Vec3};
 pub struct Cube {
 	pub center: Vec3,
 	pub material: Material,
-	half_extend: Vec3,
+	pub half_extend: Vec3,
 	aabb: AABB,
 }
 

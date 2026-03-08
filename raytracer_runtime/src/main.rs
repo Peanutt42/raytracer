@@ -1,7 +1,7 @@
 use minifb::MouseButton;
 use minifb::{Key, Window, WindowOptions};
 use rayon::prelude::*;
-use raytracer::{BVH, Camera, Scalar, Scene, Vec3, render};
+use raytracer::{BVH, Camera, Scalar, Scene, Vec3, get_camera_rotation, render};
 use std::time::Instant;
 
 fn vec3_to_rgb(v: &Vec3) -> [u8; 3] {
@@ -14,16 +14,6 @@ fn vec3_to_rgb(v: &Vec3) -> [u8; 3] {
 
 fn rgb_to_u32(r: u32, g: u32, b: u32) -> u32 {
 	(r << 16) | (g << 8) | b
-}
-
-fn get_camera_rotation(yaw: Scalar, pitch: Scalar) -> Vec3 {
-	let pitch_radians = pitch.to_radians();
-	let yaw_radians = yaw.to_radians();
-	Vec3::new(
-		yaw_radians.cos() * pitch_radians.cos(),
-		pitch_radians.sin(),
-		yaw_radians.sin() * pitch_radians.cos(),
-	)
 }
 
 fn main() {

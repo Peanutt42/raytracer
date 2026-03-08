@@ -10,7 +10,7 @@ rayon = { workspace = true }
 image = { workspace = true }
 
 [workspace]
-members = ["raytracer_headless", "raytracer_runtime", "raytracer_gpu"]
+members = ["raytracer_headless", "raytracer_runtime", "raytracer_gpu", "raytracer_terminal"]
 
 [workspace.dependencies]
 num-traits = "0.2.19"

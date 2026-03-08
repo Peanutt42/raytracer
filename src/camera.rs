@@ -86,3 +86,13 @@ impl Camera {
 		Ray::new(ray_origin, (pixel_sample - ray_origin).normalize())
 	}
 }
+
+pub fn get_camera_rotation(yaw: Scalar, pitch: Scalar) -> Vec3 {
+	let pitch_radians = pitch.to_radians();
+	let yaw_radians = yaw.to_radians();
+	Vec3::new(
+		yaw_radians.cos() * pitch_radians.cos(),
+		pitch_radians.sin(),
+		yaw_radians.sin() * pitch_radians.cos(),
+	)
+}

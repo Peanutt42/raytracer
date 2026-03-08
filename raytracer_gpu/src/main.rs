@@ -1,9 +1,10 @@
 use glam::Vec3;
 use notify::{RecursiveMode, Watcher};
-use raytracer_gpu::{
-	Camera, Cube, Renderer, Sphere, create_10_metallic_scene, create_glass_scene,
-	create_sample_scene, create_simple_scene, create_wallpaper_scene,
+use raytracer::{
+	create_10_metallic_scene, create_glass_scene, create_sample_scene, create_simple_scene,
+	create_wallpaper_scene,
 };
+use raytracer_gpu::{Camera, Cube, Material, Renderer, Sphere};
 use std::{
 	collections::HashSet,
 	path::PathBuf,
@@ -28,15 +29,17 @@ fn main() {
 
 async fn run() {
 	#[allow(clippy::type_complexity)]
-	let (create_scene_fn, normal_sky_color): (fn() -> (Vec<Sphere>, Vec<Cube>), bool) =
-		match std::env::args().nth(1) {
-			Some(ref arg) if arg == "simple" => (create_simple_scene, true),
-			Some(ref arg) if arg == "glass" => (create_glass_scene, true),
-			Some(ref arg) if arg == "metal" => (create_10_metallic_scene, true),
-			Some(ref arg) if arg == "sample" => (create_sample_scene, true),
-			Some(ref arg) if arg == "wallpaper" => (create_wallpaper_scene, false),
-			_ => (create_simple_scene, true),
-		};
+	let (create_scene_fn, normal_sky_color): (
+		fn() -> (Vec<raytracer::Sphere>, Vec<raytracer::Cube>),
+		bool,
+	) = match std::env::args().nth(1) {
+		Some(ref arg) if arg == "simple" => (create_simple_scene, true),
+		Some(ref arg) if arg == "glass" => (create_glass_scene, true),
+		Some(ref arg) if arg == "metal" => (create_10_metallic_scene, true),
+		Some(ref arg) if arg == "sample" => (create_sample_scene, true),
+		Some(ref arg) if arg == "wallpaper" => (create_wallpaper_scene, false),
+		_ => (create_simple_scene, true),
+	};
 
 	let shader_code_changed_flag = Arc::new(AtomicBool::new(false));
 	let shader_code_directory = PathBuf::from("src/shaders");
@@ -86,7 +89,7 @@ async fn run() {
 
 struct App {
 	#[allow(clippy::type_complexity)]
-	create_scene_fn: fn() -> (Vec<Sphere>, Vec<Cube>),
+	create_scene_fn: fn() -> (Vec<raytracer::Sphere>, Vec<raytracer::Cube>),
 	normal_sky_color: bool,
 	camera: Camera,
 	renderer: Option<Renderer>,
@@ -117,6 +120,8 @@ impl ApplicationHandler for App {
 		);
 
 		let (spheres, cubes) = (self.create_scene_fn)();
+		let spheres = convert_spheres(spheres);
+		let cubes = convert_cubes(cubes);
 		let renderer = pollster::block_on(Renderer::new(
 			window.clone(),
 			&spheres,
@@ -309,4 +314,59 @@ fn camera_input_controller(
 		move_dir.normalize()
 	};
 	camera.position += move_dir * speed * dt;
+}
+
+fn convert_raytracer_vec3(vec3: raytracer::Vec3) -> Vec3 {
+	Vec3 {
+		x: vec3.x as f32,
+		y: vec3.y as f32,
+		z: vec3.z as f32,
+	}
+}
+
+fn get_albedo(material: &raytracer::Material) -> Vec3 {
+	let albedo = match material {
+		raytracer::Material::Metal { albedo, .. } => *albedo,
+		raytracer::Material::Lambertain { albedo, .. } => *albedo,
+		raytracer::Material::Dielectric { .. } => raytracer::Vec3::one(),
+	};
+	convert_raytracer_vec3(albedo)
+}
+
+fn extract_material(material: &raytracer::Material) -> Material {
+	match material {
+		raytracer::Material::Dielectric { ir } => Material::Dielectric { ir: *ir as f32 },
+		raytracer::Material::Lambertain { emission, .. } => Material::Lambertain {
+			emission: *emission as f32,
+		},
+		raytracer::Material::Metal { fuzz, .. } => Material::Metalic { fuzz: *fuzz as f32 },
+	}
+}
+
+fn convert_cubes(cubes: Vec<raytracer::Cube>) -> Vec<Cube> {
+	cubes
+		.into_iter()
+		.map(|cube| {
+			Cube::new(
+				convert_raytracer_vec3(cube.center),
+				convert_raytracer_vec3(cube.half_extend),
+				get_albedo(&cube.material),
+				extract_material(&cube.material),
+			)
+		})
+		.collect()
+}
+
+fn convert_spheres(spheres: Vec<raytracer::Sphere>) -> Vec<Sphere> {
+	spheres
+		.into_iter()
+		.map(|sphere| {
+			Sphere::new(
+				convert_raytracer_vec3(sphere.center),
+				sphere.radius as f32,
+				get_albedo(&sphere.material),
+				extract_material(&sphere.material),
+			)
+		})
+		.collect()
 }

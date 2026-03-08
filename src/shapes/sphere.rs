@@ -4,7 +4,7 @@ use crate::{AABB, Bounded, Hittable, Material, Ray, Renderable, Scalar, Vec3};
 pub struct Sphere {
 	pub center: Vec3,
 	pub material: Material,
-	radius: Scalar,
+	pub radius: Scalar,
 	aabb: AABB,
 }
 

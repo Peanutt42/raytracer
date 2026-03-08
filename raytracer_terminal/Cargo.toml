@@ -1,0 +1,11 @@
+[package]
+name = "raytracer_terminal"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+raytracer = { path = "../" }
+crossterm = "0.29.0"
+ratatui = "0.30.0"
+rand = { workspace = true }
+rayon = { workspace = true }
