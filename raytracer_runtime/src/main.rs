@@ -46,9 +46,9 @@ fn main() {
 	let mut camera = Camera::new(
 		Vec3::new(1.0, 1.5, 3.0),
 		get_camera_rotation(yaw, pitch),
-		90.0,
-		10.0,
-		0.6,
+		Camera::DEFAULT_FOV,
+		Camera::DEFAULT_FOCUS_DIST,
+		Camera::DEFAULT_DEFOCUS_ANGLE,
 		width,
 		height,
 	);
@@ -129,8 +129,7 @@ fn main() {
 			if window.is_key_down(Key::Q) {
 				up -= 1.0;
 			}
-			let mut move_dir =
-				direction * forward + direction.cross(Vec3::new(0.0, 1.0, 0.0)) * left;
+			let mut move_dir = direction * forward + direction.cross(Camera::WORLD_UP) * left;
 			move_dir = if move_dir == Vec3::new(0.0, 0.0, 0.0) {
 				Vec3::new(0.0, 0.0, 0.0)
 			} else {
@@ -138,7 +137,15 @@ fn main() {
 			};
 			camera.origin = camera.origin + move_dir * delta_time * 5.0;
 			camera.origin.y += up * delta_time * 5.0;
-			camera = Camera::new(camera.origin, direction, 90.0, 10.0, 0.6, width, height);
+			camera = Camera::new(
+				camera.origin,
+				direction,
+				Camera::DEFAULT_FOV,
+				Camera::DEFAULT_FOCUS_DIST,
+				Camera::DEFAULT_DEFOCUS_ANGLE,
+				width,
+				height,
+			);
 			frame_count = 1;
 		}
 		last_mouse_pos = mouse_pos;

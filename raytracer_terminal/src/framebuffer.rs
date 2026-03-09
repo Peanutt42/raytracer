@@ -1,6 +1,7 @@
 use crossterm::{
 	cursor, queue,
 	style::{Color, Print, SetBackgroundColor, SetForegroundColor},
+	terminal::{BeginSynchronizedUpdate, EndSynchronizedUpdate},
 };
 use std::io::{self, Stdout, Write};
 
@@ -51,7 +52,7 @@ impl FrameBuffer {
 	}
 
 	pub fn flush(&self, stdout: &mut Stdout) -> io::Result<()> {
-		queue!(stdout, cursor::MoveTo(0, 0))?;
+		queue!(stdout, BeginSynchronizedUpdate, cursor::MoveTo(0, 0))?;
 
 		for row in self.cells.chunks(self.width) {
 			for cell in row {
@@ -63,6 +64,8 @@ impl FrameBuffer {
 				)?;
 			}
 		}
+
+		queue!(stdout, cursor::MoveTo(0, 0), EndSynchronizedUpdate)?;
 
 		stdout.flush()
 	}

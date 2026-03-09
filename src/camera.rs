@@ -1,5 +1,6 @@
 use crate::{Ray, Scalar, Vec3, radians, random};
 
+#[derive(Clone, PartialEq)]
 pub struct Camera {
 	pub origin: Vec3,
 	pixel00_loc: Vec3,
@@ -11,6 +12,16 @@ pub struct Camera {
 }
 
 impl Camera {
+	pub const WORLD_UP: Vec3 = Vec3 {
+		x: 0.0,
+		y: 1.0,
+		z: 0.0,
+	};
+
+	pub const DEFAULT_FOV: Scalar = 90.0;
+	pub const DEFAULT_FOCUS_DIST: Scalar = 10.0;
+	pub const DEFAULT_DEFOCUS_ANGLE: Scalar = 0.6;
+
 	pub fn new(
 		origin: Vec3,
 		direction: Vec3,
@@ -20,12 +31,6 @@ impl Camera {
 		width: usize,
 		height: usize,
 	) -> Self {
-		const UP: Vec3 = Vec3 {
-			x: 0.0,
-			y: 1.0,
-			z: 0.0,
-		};
-
 		// viewport
 		let theta = radians(fov);
 		let h = Scalar::tan(theta / 2.0);
@@ -33,7 +38,7 @@ impl Camera {
 		let viewport_width = viewport_height * (width as Scalar / height as Scalar);
 
 		let w = -direction.normalize();
-		let u = UP.cross(w).normalize();
+		let u = Self::WORLD_UP.cross(w).normalize();
 		let v = w.cross(u);
 
 		// Calculate the vectors across the horizontal and down the vertical viewport edges.
