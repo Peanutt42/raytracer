@@ -11,6 +11,19 @@ Features:
 
 ## Sample
 
+### If you have Nix
+
+```bash
+# for raytracer_gpu
+nix run git+https://github.com/Peanutt42/raytracer
+# for raytracer_headless
+nix run git+https://github.com/Peanutt42/raytracer#raytracer_headless
+# for raytracer_runtime
+nix run git+https://github.com/Peanutt42/raytracer#raytracer_runtime
+# for raytracer_terminal
+nix run git+https://github.com/Peanutt42/raytracer#raytracer_terminal
+```
+
 ### GPU accelerated raytracing (interactive, no RTX graphics card required!)
 ```bash
 cd raytracer_gpu

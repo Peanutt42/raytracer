@@ -28,10 +28,19 @@
       binaries = {
         raytracer_gpu.gpu = true;
         raytracer_headless = { };
-        raytracer_runtime = { };
+        raytracer_runtime.gpu = true;
         raytracer_terminal = { };
       };
       defaultBinary = "raytracer_gpu";
+      gpuBinaries = lib.attrNames (
+        lib.filterAttrs (
+          _:
+          {
+            gpu ? false,
+          }:
+          gpu
+        ) binaries
+      );
 
       rustBinFor = pkgs: (pkgs.extend rust-overlay.overlays.default).rust-bin;
       toolchainFor = pkgs: (rustBinFor pkgs).selectLatestNightlyWith (toolchain: toolchain.minimal);
@@ -46,7 +55,7 @@
             ];
           }
         );
-      # only needed by raytracer_gpu
+      # only needed by binaries with gpu = true
       runtimeLibsFor =
         pkgs: with pkgs; [
           wayland
@@ -122,9 +131,9 @@
               // deps
             );
 
-          gpuArgs = {
+          gpuArgsFor = bins: {
             deps = depsFor final;
-            patchBinaries = [ "raytracer_gpu" ];
+            patchBinaries = bins;
           };
         in
         {
@@ -134,7 +143,7 @@
               mainProgram = defaultBinary;
               cargoFlags = [ "--workspace" ];
             }
-            // gpuArgs
+            // gpuArgsFor gpuBinaries
           );
         }
         # one package per binary
@@ -153,7 +162,7 @@
               ];
               doCheck = false; # covered by the workspace package (${pname})
             }
-            // lib.optionalAttrs gpu gpuArgs
+            // lib.optionalAttrs gpu (gpuArgsFor [ name ])
           )
         ) binaries;
     }
