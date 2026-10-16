@@ -1,20 +1,54 @@
 {
-  description = "nix dev environment for winit + wgpu";
+  description = "raytracer";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    rust-overlay.url = "github:oxalica/rust-overlay";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, rust-overlay, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        overlays = [ (import rust-overlay) ];
-        pkgs = import nixpkgs { inherit system overlays; };
+  outputs =
+    {
+      self,
+      nixpkgs,
+      rust-overlay,
+      flake-utils,
+    }:
+    let
+      inherit (nixpkgs) lib;
 
-        # Libraries needed at runtime by winit + wgpu
-        runtimeLibs = with pkgs; [
+      cargoToml = lib.importTOML ./Cargo.toml;
+      pname = cargoToml.package.name;
+      inherit (cargoToml.package) version;
+
+      # `gpu = true` marks the ones that need the Vulkan/windowing libraries.
+      binaries = {
+        raytracer_gpu.gpu = true;
+        raytracer_headless = { };
+        raytracer_runtime = { };
+        raytracer_terminal = { };
+      };
+      defaultBinary = "raytracer_gpu";
+
+      rustBinFor = pkgs: (pkgs.extend rust-overlay.overlays.default).rust-bin;
+      toolchainFor = pkgs: (rustBinFor pkgs).selectLatestNightlyWith (toolchain: toolchain.minimal);
+      devToolchainFor =
+        pkgs:
+        (rustBinFor pkgs).selectLatestNightlyWith (
+          toolchain:
+          toolchain.default.override {
+            extensions = [
+              "rust-src"
+              "rust-analyzer"
+            ];
+          }
+        );
+      # only needed by raytracer_gpu
+      runtimeLibsFor =
+        pkgs: with pkgs; [
           wayland
           libxkbcommon
           vulkan-loader
@@ -25,33 +59,134 @@
           libxrandr
           libxi
         ];
+      depsFor = pkgs: {
+        nativeBuildInputs = with pkgs; [ pkg-config ];
+        buildInputs = runtimeLibsFor pkgs;
+      };
+    in
+    {
+      overlays.default =
+        final: _prev:
+        let
+          toolchain = toolchainFor final;
+          rustPlatform = final.makeRustPlatform {
+            cargo = toolchain;
+            rustc = toolchain;
+          };
+
+          mkPackage =
+            {
+              pname,
+              mainProgram,
+              cargoFlags,
+              deps ? {
+                nativeBuildInputs = [ ];
+                buildInputs = [ ];
+              },
+              patchBinaries ? [ ],
+              doCheck ? true,
+            }:
+            rustPlatform.buildRustPackage (
+              {
+                inherit pname version doCheck;
+
+                src = lib.fileset.toSource {
+                  root = ./.;
+                  fileset = lib.fileset.unions [
+                    ./Cargo.toml
+                    ./Cargo.lock
+                    ./src
+                    ./raytracer_gpu
+                    ./raytracer_headless
+                    ./raytracer_runtime
+                    ./raytracer_terminal
+                  ];
+                };
+                cargoLock.lockFile = ./Cargo.lock;
+                cargoBuildFlags = cargoFlags;
+                cargoTestFlags = cargoFlags;
+                strictDeps = true;
+
+                postFixup = lib.optionalString final.stdenv.hostPlatform.isLinux (
+                  lib.concatMapStringsSep "\n" (
+                    bin: "patchelf --add-rpath ${lib.makeLibraryPath (runtimeLibsFor final)} $out/bin/${bin}"
+                  ) patchBinaries
+                );
+
+                meta = {
+                  description = cargoToml.package.description or pname;
+                  license = lib.licenses.mit;
+                  inherit mainProgram;
+                };
+              }
+              // deps
+            );
+
+          gpuArgs = {
+            deps = depsFor final;
+            patchBinaries = [ "raytracer_gpu" ];
+          };
+        in
+        {
+          ${pname} = mkPackage (
+            {
+              inherit pname;
+              mainProgram = defaultBinary;
+              cargoFlags = [ "--workspace" ];
+            }
+            // gpuArgs
+          );
+        }
+        # one package per binary
+        // lib.mapAttrs (
+          name:
+          {
+            gpu ? false,
+          }:
+          mkPackage (
+            {
+              pname = name;
+              mainProgram = name;
+              cargoFlags = [
+                "-p"
+                name
+              ];
+              doCheck = false; # covered by the workspace package (${pname})
+            }
+            // lib.optionalAttrs gpu gpuArgs
+          )
+        ) binaries;
+    }
+    // flake-utils.lib.eachSystem [ "x86_64-linux" "aarch64-linux" ] (
+      system:
+      let
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [ self.overlays.default ];
+        };
       in
       {
+        packages = {
+          default = pkgs.${defaultBinary};
+          ${pname} = pkgs.${pname};
+        }
+        // lib.genAttrs (lib.attrNames binaries) (name: pkgs.${name});
+
+        apps = {
+          default = flake-utils.lib.mkApp { drv = pkgs.${defaultBinary}; };
+        }
+        // lib.mapAttrs (name: _: flake-utils.lib.mkApp { drv = pkgs.${name}; }) binaries;
+
         devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [
-            pkg-config
-
-            # Wayland
-            wayland
-            wayland-protocols
-            wayland-scanner
-            libxkbcommon
-
-            # Vulkan / wgpu
-            vulkan-loader
-            vulkan-headers
-            vulkan-validation-layers
-            vulkan-tools
-
-            # X11 fallback
-            libx11
-            libxcursor
-            libxrandr
-            libxi
-          ];
-
-          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath runtimeLibs;
+          inherit (depsFor pkgs) nativeBuildInputs buildInputs;
+          packages = [ (devToolchainFor pkgs) ];
+          env.RUST_BACKTRACE = "1";
+          shellHook = ''
+            export LD_LIBRARY_PATH="${lib.makeLibraryPath (runtimeLibsFor pkgs)}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          '';
         };
+
+        formatter = pkgs.nixfmt-tree;
       }
     );
 }
