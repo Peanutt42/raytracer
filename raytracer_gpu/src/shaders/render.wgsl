@@ -1,12 +1,13 @@
-
 struct RenderInfo {
-	frame_counter: u32,
-	// just a bool!
-	normal_sky_color: u32,
+    frame_counter: u32,
+    // just a bool!
+    normal_sky_color: u32,
 }
 
-@group(0) @binding(0) var output_texture: texture_2d<f32>;
-@group(1) @binding(0) var<uniform> render_info: RenderInfo;
+@group(0) @binding(0)
+var output_texture: texture_2d<f32>;
+@group(1) @binding(0)
+var<uniform> render_info: RenderInfo;
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
@@ -17,10 +18,10 @@ struct VertexOutput {
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     var positions = array<vec2<f32>, 3>(
-        vec2<f32>(-1.0, -1.0), // lower left
-        vec2<f32>( 3.0, -1.0), // far right (extends beyond clip-space)
-        vec2<f32>(-1.0,  3.0)  // top (extends beyond clip-space)
-    );
+            vec2<f32>(-1.0, -1.0), // lower left
+            vec2<f32>(3.0, -1.0), // far right (extends beyond clip-space)
+            vec2<f32>(-1.0, 3.0), // top (extends beyond clip-space)
+        );
 
     var output: VertexOutput;
     let pos = positions[vertex_index];
@@ -32,9 +33,10 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-	let dims = vec2<f32>(textureDimensions(output_texture));
-	let coords = vec2<i32>(in.uv * dims);
-	let color = textureLoad(output_texture, coords, 0).xyz; // textureSample(output_texture, output_sampler, in.uv).xyz;
-	let frame_count: f32 = f32(render_info.frame_counter);
-    return vec4<f32>(color / frame_count, 1.0);
+    let dims = vec2<f32>(textureDimensions(output_texture));
+    let coords = vec2<i32>(in.uv * dims);
+    let color = textureLoad(output_texture, coords, 0)
+            .xyz; // textureSample(output_texture, output_sampler, in.uv).xyz;
+    let frame_count: f32 = f32(render_info.frame_counter);
+    return vec4<f32>(color / frame_count * 1.0, 1.0);
 }
